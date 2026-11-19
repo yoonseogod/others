@@ -1,0 +1,14 @@
+{
+  "name": "turbo-kart-rally",
+  "version": "1.0.0",
+  "description": "Browser multiplayer kart racing game",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}
