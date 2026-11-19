@@ -482,7 +482,7 @@ const audio = {
 /* ================================================================
    Networking
    ================================================================ */
-const net = {
+let net = {
   ws: null, id: null, room: null, offset: 0, bestRtt: Infinity, host: null, lobbyState: 'lobby',
   get online() { return !!(this.ws && this.ws.readyState === 1); },
   now() { return Date.now() + this.offset; },
@@ -553,7 +553,7 @@ function endRaceScene() {
   race = null;
 }
 function leaveGame() {
-  endRaceScene(); net.disconnect(); history.replaceState(null, '', location.pathname);
+  endRaceScene(); net.disconnect(); try { history.replaceState(null, '', location.pathname); } catch {}
   game.state = 'menu'; $('hud').classList.add('hidden'); $('touch').classList.add('hidden'); $('results').classList.add('hidden');
   showScreen('menu'); audio.engine(0, false);
 }
@@ -849,7 +849,7 @@ function updateHud(now) {
   $('place').innerHTML = `${p}<small>${ordinal(p).slice(-2)}</small>`;
   $('speed').innerHTML = `${Math.round(Math.abs(k.speed) * 3.6)}<small> km/h</small>`;
   $('item').textContent = k.itemRoll > 0 ? Object.values(ITEMS)[Math.floor(now / 80) % 3] : (k.item ? ITEMS[k.item] : '');
-  $('net').textContent = race.online ? `방 ${net.room} · ping ${net.rtt ?? '-'}ms` : '';
+  $('net').textContent = race.online ? `방 ${net.room}` + (net.rtt != null ? ` · ping ${net.rtt}ms` : '') : '';
   // centre text
   const tl = race.startAt - now;
   let center = '', msg = '';
@@ -963,8 +963,108 @@ function startSolo() {
   startRace({ grid, startAt: performance.now() + 4000, host: 'me', online: false });
 }
 $('soloBtn').onclick = startSolo;
-const onlineOk = location.protocol.startsWith('http');
-if (!onlineOk) { $('createBtn').disabled = $('joinBtn').disabled = true; $('menuErr').textContent = '온라인 모드는 서버(node server.js)로 접속해야 사용할 수 있습니다.'; }
+/* ---------- online transport: claude.ai realtime room (artifact) or WebSocket server ---------- */
+function setOnline(ok, msg) { $('createBtn').disabled = $('joinBtn').disabled = !ok; $('menuErr').textContent = msg || ''; }
+const IN_ARTIFACT = !!(window.claude && typeof window.claude.use === 'function');
+if (IN_ARTIFACT) {
+  setOnline(false, '온라인 연결 준비 중…');
+  window.claude.use('room').then(R => {
+    if (!R) return setOnline(false, '온라인 대전은 claude.ai에 로그인하고 공유받은 사람만 할 수 있어요. 혼자 달리기는 가능합니다.');
+    const rn = makeRoomNet(R); rn.onMsg = net.onMsg; net = rn; setOnline(true);
+  }, () => setOnline(false, '온라인 연결을 사용할 수 없습니다.'));
+} else if (!location.protocol.startsWith('http')) setOnline(false, '온라인 모드는 서버(node server.js)로 접속해야 사용할 수 있습니다.');
+
+// Multiplayer over the platform's presence channel: every player publishes its own kart,
+// the host also publishes CPU karts and the race start; items travel as a short event log.
+function makeRoomNet(R) {
+  let room = null, unsubs = [], my = null, evSeq = 0, evBuf = [], lastSeq = {}, lastKey = {}, lastRaceId = null, lobbyKey = '';
+  const safeColor = c => (/^#[0-9a-f]{6}$/i.test(c) ? c : '#888888');
+  const view = p => (p.sameTab ? my : p.presence);
+  function humans() {
+    return room.peers().filter(p => p.kind === 'viewer' && view(p) && typeof view(p).n === 'string')
+      .sort((a, b) => (view(a).j - view(b).j) || (a.peer < b.peer ? -1 : 1));
+  }
+  function refresh(change) {
+    if (!room) return;
+    if (!api.id) { const meP = room.peers().find(p => p.sameTab); if (!meP) return; api.id = meP.peer; }
+    const hs = humans(); if (!hs.length) return;
+    const host = hs[0], hp = view(host);
+    api.host = host.peer;
+    // remote karts, CPU karts and item events
+    const fresh = change ? [...change.joined, ...change.updated] : room.peers();
+    for (const p of fresh) {
+      if (p.sameTab || !p.presence) continue;
+      const pr = p.presence;
+      const ks = pr.k ? JSON.stringify(pr.k) : '';
+      if (ks && lastKey[p.peer] !== ks) { lastKey[p.peer] = ks; api.onMsg({ t: 'state', id: p.peer, s: pr.k }); }
+      if (p.peer === host.peer && pr.bk) for (const id in pr.bk) {
+        if (!/^b\d$/.test(id)) continue;
+        const bs = JSON.stringify(pr.bk[id]);
+        if (lastKey[id] !== bs) { lastKey[id] = bs; api.onMsg({ t: 'state', id, s: pr.bk[id] }); }
+      }
+      if (Array.isArray(pr.ev)) for (const e of pr.ev) {
+        if (!e || typeof e.q !== 'number' || e.q <= (lastSeq[p.peer] || 0)) continue;
+        lastSeq[p.peer] = e.q;
+        if (race && e.r === lastRaceId) onEvent(e, false);
+      }
+    }
+    if (change) for (const p of change.left) api.onMsg({ t: 'leave', id: p.peer });
+    // race start from the host
+    const hr = hp.race;
+    if (hr && hr.id && hr.id !== lastRaceId && Array.isArray(hr.grid)) {
+      lastRaceId = hr.id;
+      if (hr.grid.some(g => g.id === api.id) && hr.at > Date.now() - 3000) {
+        evBuf = []; my.race = hr; push({ race: hr, ev: [] });
+        api.onMsg({ t: 'start', at: hr.at, host: host.peer, grid: hr.grid.map(g => ({ id: String(g.id), name: String(g.name).slice(0, 16), color: safeColor(g.color), bot: !!g.bot })) });
+      }
+    }
+    if (!hr && my.race) { my.race = null; push({ race: null, k: null, bk: null }); }
+    const lobby = { t: 'lobby', host: host.peer, state: hr ? 'racing' : 'lobby', bots: Math.max(0, Math.min(7, hp.bots | 0)),
+      players: hs.map(p => ({ id: p.peer, name: String(view(p).n).slice(0, 12), color: safeColor(view(p).c) })) };
+    const key = JSON.stringify(lobby);
+    if (key !== lobbyKey) { lobbyKey = key; onLobby(lobby); }
+  }
+  function push(patch) { Object.assign(my, patch); if (room) room.presence(patch).catch(() => {}); }
+  const api = {
+    id: null, room: null, rtt: undefined, host: null, isRoom: true,
+    get online() { return !!room; },
+    now() { return Date.now(); },
+    async connect(code) {
+      try { room = await R.join('tkr-' + code.toLowerCase()); }
+      catch { $('menuErr').textContent = '방에 들어갈 수 없습니다. 잠시 후 다시 시도하세요.'; return; }
+      api.room = code; api.id = null; evBuf = []; lastSeq = {}; lastKey = {}; lastRaceId = null; lobbyKey = '';
+      my = { n: me.name, c: me.color, j: Date.now(), bots: 3, race: null, k: null, bk: null, ev: [] };
+      room.presence(my).catch(() => {});
+      unsubs.push(room.onPeers(ch => refresh(ch)));
+      showLobby();
+      setTimeout(() => {
+        if (room && humans().length > 8) { api.disconnect(); leaveGame(); $('menuErr').textContent = '방이 가득 찼습니다 (최대 8명).'; }
+      }, 2500);
+    },
+    disconnect() {
+      unsubs.forEach(u => u()); unsubs = [];
+      if (room) { room.leave().catch(() => {}); room = null; }
+      api.id = null;
+    },
+    send(m) {
+      if (!room) return;
+      if (m.t === 'state') { if (m.id) { my.bk = { ...(my.bk || {}), [m.id]: m.s }; push({ bk: my.bk }); } else push({ k: m.s }); }
+      else if (m.t === 'event') { const e = { ...m.e, q: ++evSeq, r: lastRaceId }; evBuf = [...evBuf, e].slice(-12); push({ ev: evBuf }); }
+      else if (m.t === 'bots') { push({ bots: m.n }); refresh(); }
+      else if (m.t === 'start' && api.host === api.id) {
+        const grid = humans().slice(0, 8).map(p => ({ id: p.peer, name: String(view(p).n).slice(0, 12), color: safeColor(view(p).c) }));
+        const names = ['Bolt', 'Nitro', 'Comet', 'Drifty', 'Turbo', 'Zippy', 'Rocket'];
+        const cols = ['#3a7bd5', '#2ecc71', '#f1c40f', '#9b59b6', '#e67e22', '#1abc9c', '#ecf0f1'];
+        for (let i = 0; i < Math.min(my.bots, 8 - grid.length); i++) grid.push({ id: 'b' + i, name: names[i] + ' (CPU)', color: cols[i], bot: true });
+        for (let i = grid.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [grid[i], grid[j]] = [grid[j], grid[i]]; }
+        push({ race: { id: Math.random().toString(36).slice(2, 10), at: Date.now() + 4500, grid }, bk: null, k: null });
+        refresh();
+      }
+      else if (m.t === 'lobby' && api.host === api.id) { push({ race: null, k: null, bk: null }); refresh(); }
+    },
+  };
+  return api;
+}
 function joinRoom(code) {
   saveProfile(); $('menuErr').textContent = '';
   net.connect(code, () => { $('menuErr').textContent = '서버에 연결할 수 없습니다.'; });
@@ -980,12 +1080,18 @@ $('botSel').onchange = () => net.send({ t: 'bots', n: +$('botSel').value });
 $('startBtn').onclick = () => net.send({ t: 'start' });
 $('leaveBtn').onclick = leaveGame;
 $('copyLink').onclick = () => {
+  if (net.isRoom) {
+    const done = () => ($('copyLink').textContent = '✅ 코드 복사됨! 같은 링크에서 코드로 참가');
+    (navigator.clipboard ? navigator.clipboard.writeText(net.room) : Promise.reject()).then(done, () => ($('copyLink').textContent = '방 코드: ' + net.room));
+    setTimeout(() => ($('copyLink').textContent = '🔗 방 코드 복사'), 2500);
+    return;
+  }
   const url = location.origin + location.pathname + '?room=' + net.room;
   (navigator.clipboard ? navigator.clipboard.writeText(url) : Promise.reject()).then(() => ($('copyLink').textContent = '✅ 복사됨!'), () => prompt('초대 링크', url));
   setTimeout(() => ($('copyLink').textContent = '🔗 초대 링크 복사'), 1500);
 };
 
-function showLobby() { game.state = 'lobby'; showScreen('lobby'); $('lobbyCode').textContent = net.room; }
+function showLobby() { game.state = 'lobby'; showScreen('lobby'); $('lobbyCode').textContent = net.room; if (net.isRoom) $('copyLink').textContent = '🔗 방 코드 복사'; }
 function onLobby(m) {
   net.host = m.host; net.lobbyState = m.state;
   const amHost = m.host === net.id;
