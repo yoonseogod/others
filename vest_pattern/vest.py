@@ -49,18 +49,18 @@ def interp(y, table):  # table: [(y, v)] descending y
 
 # ================= FRONT (whole, seam lines) =================
 E_t = (-2.0, 6.0)      # V bottom on front edge (overlap 2 cm beyond CF)
-N   = (7.5, 42.0)      # neck point
-Sh  = (12.0, 41.3)     # shoulder point (strap 4.5 cm)
+N   = (7.5, 44.0)      # neck point (≥ back neck point: front needs bust length)
+Sh  = (12.0, 43.3)     # shoulder point (strap 4.5 cm)
 U   = (23.5, 22.0)     # underarm
 S_w = (21.0, 0.0)      # side waist
 S_b = (24.0, -17.0)    # side hem
 T   = (4.0, -22.5)     # hem point
 E_b = (-2.0, -17.5)    # front edge bottom corner
 
-ARM_F  = [(12.8, 33.0), (16.0, 23.5), U]
+ARM_F  = [(12.8, 34.0), (16.0, 23.5), U]
 SIDE_F_UP = [(23.4, 14.0), (21.5, 6.0), S_w]
 SIDE_F_LO = [(21.5, -6.0), (23.3, -12.0), S_b]
-NECK_F = [(0.5, 18.0), (5.0, 32.0), N]
+NECK_F = [(0.5, 18.5), (5.0, 33.5), N]
 
 front_outline = path(E_b, [[E_t], NECK_F, [Sh], ARM_F, SIDE_F_UP, SIDE_F_LO, [T], [E_b]])
 front_poly = Polygon(front_outline)
@@ -204,6 +204,20 @@ def outward_normal(poly, p):
 def on_bound(bound, y):
     return min(bound, key=lambda p: abs(p[1]-y))
 
+
+def welt_box():
+    (x0, y0), (x1, y1) = POCKET
+    L = math.dist(POCKET[0], POCKET[1]); ux, uy = (x1-x0)/L, (y1-y0)/L; nx, ny = -uy, ux
+    h = 2.5
+    a, b = (x0, y0), (x1, y1); c_, d_ = (x1+nx*h, y1+ny*h), (x0+nx*h, y0+ny*h)
+    return [a, b, c_, d_]
+def draw_welt_box(pc, poly):
+    a, b, c_, d_ = welt_box()
+    for seg_, w in (([a, b], 1.3), ([b, c_], 0.9), ([c_, d_], 0.9), ([d_, a], 0.9)):
+        g = LineString(seg_).intersection(poly)
+        for q in getattr(g, "geoms", [g]):
+            if not q.is_empty and q.length > 0.05: pc.poly(list(q.coords), w, close=False)
+
 # ---------- ① centre front ----------
 P1 = Piece("cf")
 P1.poly(coords(cutline(cf_poly)), 1.0)
@@ -218,10 +232,8 @@ P1.text((2.6, -5), "단춧구멍 2cm · 단추 1.8cm", 6.5, rot=90)
 for p in NOTCH_CF:
     add_notch(P1, p, outward_normal(cf_poly, p))
 P1.text((on_bound(left_b, 2)[0]-1.0, 2.0), "개더 구간", 6.5, rot=90)
-pk_in = POCKET[0]; seam_at = on_bound(left_b, -10.3)
-P1.poly([pk_in, seam_at], 1.2, close=False)
-P1.poly([(pk_in[0], pk_in[1]-0.0), (pk_in[0], pk_in[1]+2.5)], 1.0, close=False)
-P1.text((5.0, -12.6), "웰트 포켓 →", 6.5)
+draw_welt_box(P1, cf_poly)
+P1.text((7.0, -13.0), "웰트 포켓 (굵은 선 = 박음 위치)", 6.5)
 add_grain(P1, 4.5, -12, 20)
 P1.text((4.0, 31), "① 앞 중심판", 13, True)
 P1.text((4.0, 29.2), "CENTRE FRONT", 8, True)
@@ -239,10 +251,8 @@ add_notch(P2, S_w, (1, 0))
 P2.poly([S_w, rot_pt(seam_w0)], 0.3, [1, 2], close=False)
 P2.poly([S_w, seam_w0], 0.3, [1, 2], close=False)
 P2.text((17.0, 1.4), "허리선 WAIST", 6.5)
-pk_out = POCKET[1]; seam_at_r = on_bound(right_b, -10.0)
-P2.poly([seam_at_r, pk_out], 1.2, close=False)
-P2.poly([pk_out, (pk_out[0], pk_out[1]+2.5)], 1.0, close=False)
-P2.text((16.5, -11.2), "← 웰트 포켓 위치", 6.5)
+draw_welt_box(P2, sf_poly)
+P2.text((17.0, -10.8), "웰트 포켓 위치", 6.5)
 gp = sf_pt(on_bound(right_b, 2))
 P2.text((gp[0]+0.9, gp[1]), "노치 사이 개더", 6.5, rot=80)
 add_grain(P2, 17.5, -15, -2)
@@ -278,7 +288,7 @@ P4.poly([(-2, 0), (S_w[0], 0)], 0.4, [1, 2], close=False)
 P4.poly([(0, 7), (0, -19)], 0.5, [6, 2, 1, 2], close=False)
 add_notch(P4, min(path(U, [SIDE_F_UP]), key=lambda q: abs(q[1]-10)), (1, -0.15))
 add_notch(P4, S_w, (1, 0))
-add_grain(P4, 5.0, -12, 18)
+add_grain(P4, 16.5, -12, 14)
 P4.text((14.5, 33.5), "④ 앞 안감", 13, True)
 P4.text((14.5, 31.7), "FRONT LINING", 8, True)
 P4.text((14.5, 30.1), "안감 2장 (좌우 대칭)", 8)
@@ -293,12 +303,13 @@ P5.text((WL/2, 5.0), "⑤ 웰트 WELT", 9, True)
 P5.text((WL/2, 2.2), "겉감 2장 + 심지 2장", 7)
 P5.text((WL/2, 1.0), "····· 접는 선 / 시접 포함", 6.5)
 BW = POCKET_LEN + 2 + 2*SA
+BH = 8.0 + 2*SA                       # finished depth 8 cm (hem is ~9.6 cm below the pocket)
 P6 = Piece("bag")
-P6.poly(path((0, 14), [[(0, 3)], [(0, 0.8), (1.2, 0), (3, 0)], [(BW-3, 0)], [(BW-1.2, 0), (BW, 0.8), (BW, 3)], [(BW, 14)], [(0, 14)]]), 1.0, close=False)
-add_grain(P6, 2.5, 2, 12, "식서")
-P6.text((BW/2+1, 9.5), "⑥ 주머니감", 9, True)
-P6.text((BW/2+1, 8.2), "POCKET BAG", 7, True)
-P6.text((BW/2+1, 6.8), "안감 4장 · 시접 포함", 7)
+P6.poly(path((0, BH), [[(0, 3)], [(0, 0.8), (1.2, 0), (3, 0)], [(BW-3, 0)], [(BW-1.2, 0), (BW, 0.8), (BW, 3)], [(BW, BH)], [(0, BH)]]), 1.0, close=False)
+add_grain(P6, 2.5, 1.5, BH-1.5, "식서")
+P6.text((BW/2+1, 7.0), "⑥ 주머니감", 9, True)
+P6.text((BW/2+1, 5.7), "POCKET BAG", 7, True)
+P6.text((BW/2+1, 4.3), "안감 4장 · 시접 포함", 7)
 
 # ================= layout on big sheet =================
 COLS, ROWS = 4, 4
@@ -361,17 +372,17 @@ def cover(c):
     y -= 1.5
     line("■ 치수 (M)", 10.5, True, 5.8)
     line("몸 치수: 가슴 88 · 허리 70 · 엉덩이 94cm  →  완성 치수: 가슴 약 91 · 허리 약 72 · 밑단 둘레 약 93cm")
-    line(f"앞 길이(어깨~앞 끝) 약 64cm · 뒤 길이(뒷목~밑단) 약 58cm · 엉덩이를 덮는 길이 · 포켓 입구 약 {POCKET_LEN:.1f}cm")
+    line(f"앞 길이(옆목점~앞 끝) 약 {N[1]-T[1]:.0f}cm · 뒤 길이(뒷목~밑단) 약 {B_cb[1]-B_cbb[1]:.0f}cm · 엉덩이를 덮는 길이 · 포켓 입구 약 {POCKET_LEN:.1f}cm")
     y -= 1.5
     line("■ 재단 목록 (시접 1cm 포함: 바깥 실선 = 재단선, 안쪽 점선 = 박음선)", 10.5, True, 5.8)
     line("① 앞 중심판 — 겉감 2장 + 심지 2장      ② 옆 앞판 — 겉감 2장      ③ 뒤판 — 겉감 1장, 안감 1장 (골선)")
-    line("④ 앞 안감 — 안감 2장      ⑤ 웰트 — 겉감 2장 + 심지 2장      ⑥ 주머니감 — 안감 4장   (①②④는 좌우 대칭으로)")
+    line("④ 앞 안감 — 안감 2장      ⑤ 웰트 — 겉감 2장 + 심지 2장      ⑥ 주머니감 — 안감 4장 (깊이 8cm)  · ①②④는 좌우 대칭")
     line("부자재: 기어 모양 금속 단추 4개(지름 1.8cm) · 검정 레이스 트림(폭 1~1.5cm) 약 1.2m · 접착심지 · 브로치(선택)")
     line("원단: 겉감 코튼 트윌/스트레치 코튼 약 1m (150cm 폭) · 안감 약 0.9m")
     y -= 1.5
     line("■ 만드는 순서", 10.5, True, 5.8)
     for s in [
-        "1. ①앞 중심판과 ⑤웰트에 심지를 붙입니다.",
+        "1. ①앞 중심판과 ⑤웰트에 심지를 붙이고, V넥 목둘레 박음선을 따라 늘림 방지 테이프를 붙입니다 (바이어스라 늘어나기 쉬움).",
         "2. ②옆 앞판의 프린세스 선 노치 사이(개더 구간) 시접 안쪽에 큰 땀 2줄을 박고 실을 당겨 ①과 길이를 맞춥니다 (러칭).",
         "3. ①과 ②를 겉끼리 맞대고 레이스를 사이에 끼워 프린세스 선을 박습니다 → 레이스가 솔기에서 살짝 보이게.",
         "4. 웰트 포켓을 만듭니다 — 표시처럼 프린세스 선을 비스듬히 가로지릅니다 (솔기를 먼저 박은 뒤 작업).",
