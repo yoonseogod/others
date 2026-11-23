@@ -85,14 +85,14 @@ N   = (7.5, 44.0)      # neck point
 Sh  = (12.0, 43.3)     # shoulder point (strap 4.5 cm)
 U   = (23.5, 22.0)     # underarm
 S_w = (21.0, 0.0)      # side waist
-S_b = (24.0, -17.0)    # side hem
+S_b = (25.0, -17.0)    # side hem
 T   = (4.0, -22.5)     # hem point
 E_b = (-2.0, -17.5)    # front edge bottom corner
 
 NECK_F = [(0.3, 18.0), perp_down(Sh, N, 10.0), N]               # leaves N at 90° to shoulder
 ARM_F  = [perp_down(N, Sh, 8.0), (15.0, 22.0), U]               # 90° at shoulder, horizontal at underarm
 SIDE_F_UP = [(23.4, 14.0), (21.0, 5.0), S_w]                     # vertical tangent at waist (no kink)
-SIDE_F_LO = [(21.0, -5.0), (23.3, -12.0), S_b]
+SIDE_F_LO = [(21.0, -5.0), (24.36, -12.0), S_b]
 
 front_raw = path(E_b, [[E_t], NECK_F, [Sh], ARM_F, SIDE_F_UP, SIDE_F_LO, [T]])
 front_ring = front_raw
@@ -145,11 +145,11 @@ POCKET_LEN = math.dist(*POCKET)
 
 # ================= BACK (centre back on fold) =================
 B_cb = (0.0, 41.0); B_n = (7.5, 43.5); B_sh = (12.0, 43.0)
-U_b = (22.0, 22.0); B_w = (19.5, 0.0); B_sb = (22.5, -17.0); B_cbb = (0.0, -17.0)
+U_b = (22.0, 22.0); B_w = (19.5, 0.0); B_sb = (23.5, -17.0); B_cbb = (0.0, -17.0)
 NECK_B = [perp_down(B_sh, B_n, 1.8), (3.5, 41.0), B_cb]          # 90° at shoulder, 90° at CB
 ARM_B = [perp_down(B_n, B_sh, 9.0), (13.5, 22.0), U_b]
 SIDE_B_UP = [(21.9, 14.0), (19.5, 5.0), B_w]                     # = front side shifted 1.5 cm
-SIDE_B_LO = [(19.5, -5.0), (21.8, -12.0), B_sb]
+SIDE_B_LO = [(19.5, -5.0), (22.86, -12.0), B_sb]
 back_ring = path(B_cbb, [[B_cb]])[:-1] + path(B_cb, [list(reversed([B_n] + NECK_B[:2]))[1:] + [B_n]]) if False else None
 back_neck = path(B_n, [NECK_B])                                   # B_n -> CB
 back_outline = [B_cbb] + list(reversed(back_neck)) + path(B_sh, [ARM_B, SIDE_B_UP, SIDE_B_LO, [B_cbb]])
@@ -167,6 +167,13 @@ k = seq.index(_ring[iT])
 edgeA, edgeB = seq[:k+1], [seq[0]] + seq[k:][::-1]
 edge_line = edgeA if any(p[0] < -1.5 for p in edgeA) else edgeB  # the run that passes the front edge
 face_f = largest(front_poly.intersection(LineString(edge_line).buffer(FACE_W, cap_style=1)))
+# end the facing with a straight cut square to the hem, 4.5 cm past the hem point (clear of the pocket bag)
+_hd = (S_b[0]-T[0], S_b[1]-T[1]); _hn = math.hypot(*_hd); _hu = (_hd[0]/_hn, _hd[1]/_hn)
+_H = (T[0] + _hu[0]*4.5, T[1] + _hu[1]*4.5); _pp = (-_hu[1], _hu[0])
+_remove = Polygon([(_H[0]+_pp[0]*80, _H[1]+_pp[1]*80), (_H[0]-_pp[0]*80, _H[1]-_pp[1]*80),
+                   (_H[0]-_pp[0]*80+_hu[0]*80, _H[1]-_pp[1]*80+_hu[1]*80), (_H[0]+_pp[0]*80+_hu[0]*80, _H[1]+_pp[1]*80+_hu[1]*80)]).intersection(box(-50, -60, 60, -10))
+face_f = largest(face_f.difference(_remove))
+face_f = largest(face_f.buffer(3, join_style=1).buffer(-3, join_style=1).intersection(front_poly).difference(_remove))  # round inner corners
 face_f = largest(face_f.intersection(Polygon(left_b + [(-40, -40), (-40, 60), (A_ext[0], 60)])))
 face_b = largest(back_poly.intersection(LineString(back_neck + [B_sh]).buffer(FACE_W, cap_style=1)))
 
@@ -311,8 +318,8 @@ for bx, by in BUTTONS:
     P4.circle((bx, by), 0.15); P4.poly([(bx-0.2, by), (bx+1.8, by)], 1.3, close=False)
 P4.poly([(0, 7), (0, -19)], 0.5, [6, 2, 1, 2], close=False)
 add_grain(P4, 2.0, -10, 14, "식서")
-P4.text((2.6, 33), "④ 앞 안단", 12, True, rot=-72)
-P4.text((4.4, 30.5), "FRONT FACING · 겉감 2장 + 심지", 7, rot=-72)
+P4.text((3.9, 21.0), "④ 앞 안단", 11, True, rot=75)
+P4.text((5.1, 20.6), "FRONT FACING · 겉감 2장 + 심지", 6.5, rot=75)
 P4.text((3.6, -20.0), "안쪽 가장자리는 오버록", 6)
 
 # ---------- ⑤ back neck facing ----------
@@ -404,7 +411,7 @@ def cover(c):
     line("회색 점선 바깥 여백을 자르고 ◆ 표시와 선을 맞춰 아래 배치도 순서대로 테이프로 붙이기")
     y -= 1.5
     line("■ 치수 (M)", 10.5, True, 5.8)
-    line("몸 치수: 가슴 88 · 허리 70 · 엉덩이 94cm  →  완성 치수: 가슴 약 91 · 허리 약 72 · 밑단 둘레 약 93cm")
+    line("몸 치수: 가슴 88 · 허리 70 · 엉덩이 94cm  →  완성 치수: 가슴 약 91 · 허리 약 72 · 엉덩이(밑단) 약 96cm")
     line(f"앞 길이(옆목점~앞 끝) 약 {N[1]-T[1]:.0f}cm · 뒤 길이(뒷목~밑단) 약 {B_cb[1]-B_cbb[1]:.0f}cm · 포켓 입구 약 {POCKET_LEN:.1f}cm")
     y -= 1.5
     line("■ 재단 목록 (시접 1cm 포함: 바깥 실선 = 재단선, 안쪽 점선 = 박음선)", 10.5, True, 5.8)
