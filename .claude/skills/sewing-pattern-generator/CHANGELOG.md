@@ -1,0 +1,149 @@
+# Changelog
+
+All notable changes to this skill are listed here. Versions follow [semantic versioning](https://semver.org/).
+
+## [Unreleased]
+
+### Added
+- **Creative silhouettes** for tops, dresses, skirts, trousers, jackets and hats (`--design`, spec/option `design`, `scripts/design.py`): explicit design features on top of the practice-correct base block: profiles, bulges, flares and tapers along seams, pointed tips (hood, crown), hem shapes (points, zigzag, scallops, waves, curve) across the unfolded panel, and appendages (spikes, ears, round tabs, fins) sewn into a seam with notches and their own booklet steps. Presets: starfish, balloon, bell_sleeves, zigzag_hem, petal_hem, tulip_skirt, elf, cat_ears, dino_spikes, balloon_legs, flared_legs, wavy_loop. `design.py describe` writes the feature list to confirm (including options the shape needs, e.g. no hem band under a pointed hem). The validation report lists every feature as an intended deviation and re-checks freedom of movement (girth ≥ body + minimum ease, openings) and sewability (tip angles, inner corners, steepness, appendage sizes); seams stay matched, attached ends do not move. Title-page views show the reshaped garment (also a pointed hood). Modules without a hand-written zone table get their zones from the drafted pattern; presets only go on the kind of garment they are meant for; hems with a band, facing or lining and flat accessories are not reshaped. See `references/creative_designs.md`.
+
+### Fixed
+- **Finished bag on the title page and "Done!"**: the tote is drawn as a bag (front view and a view at an angle with the gusset, the opening and both handles) and the drawstring bag with its cords, instead of the flat pattern pieces side by side.
+- **Fabric layers in the booklet pictures** lie as on the table: when two pieces are stacked right sides together, a piece that is not cut as a mirrored pair is always drawn face down as its mirror image (the back bag piece was turned upside down onto the front); mirrored pairs and pieces cut on the fold stay upright (no shoulder turned by 35°, no back leg or pocket bag upside down). The booklet check reports a top piece that is not face down, and a test checks every garment.
+- Pressing the bag handles shows both long edges folded to the middle (right side visible) instead of a plain wrong side; the cross-section detail no longer shrinks to a dot next to tall narrow pieces (handles, straps).
+- **Tote bag instructions** (review of a shopper booklet): the bag is turned right side out before the top edge (both variants); without a lining and with an overlocker the top edge is overlocked and turned once 3 cm instead of 1 + 2 cm; the hem that holds the handles is topstitched (back stitch by hand, never a blind stitch) and every handle end gets a square with a cross. New pictures: the boxed corner opened out with the stitch line across, the handles under the hem and folded up with the reinforcement. The main fabric gets a recommendation (canvas, denim, cotton twill from about 250 g/m²) and optional interfacing.
+- **Bags and other modules without body measurements** no longer get garment texts: no body measurement table, no fit, no test garment note, no "as worn" legend, a final check instead of "after the test garment", "wash the finished piece".
+- "Your machines" only lists the kinds of stitching the steps use (no cuffs/waistband row for a bag).
+- The time estimate counts hand sewing (no sewing machine): about 2.5 m per hour.
+- The cutting tip "turn the paper piece over for the second piece of a pair" only appears for mirrored pairs.
+- File names without "×" and spaces (`tragetasche_45x42x14_cm_…`); German pre-wash text: "damit der Stoff jetzt einläuft".
+
+## [1.7.0] - 2026-11-09
+
+### Added
+- **New garments:** `bodysuit` (body with snap crotch, swimsuit, baby wrap body), `underwear` (briefs with a burrito gusset, boxer briefs), `swim_trunks` (mesh liner, drawcord with eyelets, mesh pocket bags), `jumpsuit` (jumpsuit, playsuit, boiler suit), `pyjama` (T-shirt or shirt top with pants, one booklet and one cutting layout), `romper` (baby romper with snaps along the inner legs, rib cuffs or feet), `sleeping_bag` (sleeping bag and swaddle sack, TOG 0.5/1.0/2.5 with lining and wadding).
+- **Style lines** (`style_lines`: princess, yoke, color_block) on T-shirt, hoodie, sweater and dress: the fit stays the same, the panels are separate pieces (contrast fabric for colour blocking), the style seams are sewn first.
+- Shirt without a collar (`collar: none`) gets a bias-bound neckline.
+- Fabrics `swim_woven` and `swim_lycra`; fabric groups mesh, wadding and contrast fabric in the cutting layout and the booklet legend.
+- Photo mode A maps shirts, jeans, overalls, bodysuits, jackets, jumpsuits and the other new garments to their modules, and style lines to `style_lines`.
+- **German README** (`README.md`) with every garment as an example, English `README.en.md`, and one README per garment in `examples/garments/` with example prompts for all options (generated by `tools/garment_docs.py`).
+- **Common practice checks** (`scripts/practice.py`): defaults are compared with guide ranges from pattern-making practice and ready-to-wear (chest/hip ease per fit, crew-neck depth and width, sleeve-cap height for the shoulder); the validation report lists them under "Common practice" and warns when a default drifts outside. Special values come only from options and skip the matching check.
+- **Fit `boxy`** for tops: wide and straight, dropped shoulder, low cap and wide sleeve, slightly cropped, hem band barely drawn in (95 %).
+
+### Changed
+- **Crew neck** as in current ready-to-wear: front drop about as deep as the half neck width (children ≈ 6–7 cm, adults ≈ 9–10 cm, before: 9–12 cm); a neckline widened to fit over the head gets wider, not deeper. The automatic widening now also makes the stretched neckband fit over the head.
+- **Sleeve cap follows the shoulder**: a dropped shoulder (wide, oversized, boxy) lowers the cap and widens the sleeve (cap ≤ 0.56 × armhole depth − 0.8 × shoulder extension), instead of a high cap that pulls when the arm is raised.
+- **Oversized** tops get more ease (knits +35 % instead of +27 %, woven +40 %).
+
+## [1.6.0] - 2026-11-08
+
+### Added
+- **Coverstitch basics** in the booklet (stitch picture, how to end the seam) when the coverstitch machine is used; the sewing-machine basics only appear when a sewing machine is used, and the hand-stitch basics only list the stitches the steps really use.
+- **Cutting step shows the real cutting layout** (all fabrics, rib stretch direction "along the bands"), and the text says whether to cut on the fold or single layer (turn the paper piece over for the second piece).
+- **Machine set-up step for every machine used** (sewing machine needle, overlocker cones and differential feed, coverstitch) with a test seam on scraps.
+- Materials list adds clear elastic/twill tape for knit shoulders and a darning needle for overlocker chains.
+
+### Changed
+- **Seam allowances in the text always match the pieces** (`steps.fix_allowance`): neckline, hood and band allowances are the full allowance when the band is sewn on the overlocker (the knife needs it), 0.7 × otherwise; the parts page lists every allowance that differs.
+- **Overlocker seams** are pressed to one side (never "pressed open"); the pin warning appears once; the curve tip names the real curves of the garment (armhole and neckline for tops, crotch and pocket bag for pants).
+- **Knits are not edge-finished** (no extra zigzag/overlock finishing steps), hand hems use a blind stitch, and "free arm" hints only appear with a sewing machine.
+- **Hem bands** use a hem ratio of 80–90 % (instead of the neckline ratio) and are checked to go over the hips; cuffs say to pin at the cuff seam and the opposite fold.
+- Fit check, left/right note and title-page wording depend on who wears it (child, adult, doll) and on the garment (legs, sleeves).
+- Title-page views use the same scale front and back; raglan tops show their sleeves.
+- Knit dress skirts are hemmed with a single fold like the bodice.
+
+### Fixed
+- German booklets: untranslated sizes ("women's size"), skirt names, curve hints, fit-check and wearer notes, "fit 'oversized'"; long sentences are translated sentence by sentence when no full entry exists.
+- Neckband ring step said 10 mm while the band has 7 mm (translated edge labels were not recognised).
+- Waistband steps were labelled "band folded"; basting steps showed a finished-edge cross-section; ✅/❌/⚠️ printed as empty boxes in the PDF report.
+
+## [1.5.0] - 2026-11-08
+
+### Added
+- **Stripes, checks and one-way prints in the cutting layout**: option `fabric_print` (`one_way`, `stripes`, `plaid`) with `print_repeat_cm`, CLI `--fabric-print` / `--print-repeat`. Stripes are matched at the side seams, inside leg seams and from the body into the sleeves (match points ▲ on the same stripe, stripes drawn in the layout, how-to in the instructions, one repeat extra in the amount); checks also align the centre lines and are cut single layer; one-way prints are cut like a nap.
+- **Step pictures keep what is already sewn**: seams, hems, topstitching and pockets from earlier steps stay visible as grey dashed lines ("Already sewn" in the legend), so every picture can be checked against the garment on the table.
+- **Assembled views** for tops: hood and sleeves are set in on the body opened out at the shoulder seam (the neckline and the armhole as one curve), side and sleeve seams are sewn on the garment folded at the shoulders, and the neck seam is finished with the hood on. Built from the real pieces, so they fit every size; T-shirt and dress use them too.
+- **Hands** where the hands matter (stretching a band while sewing it on, folding a band).
+- **Alternative box** (blue) for a second way to do a step, e.g. sewing the cuffs on flat before the side seams.
+
+### Changed
+- **Fabric-saving cutting layout** (`scripts/nesting.py`): new packer for the fabric with a search over the order and the orientation of the pieces (heads to toes, either side up for pairs cut through both layers), a finer 2.5 mm raster and an exact final compaction to the 5 mm gap. Main fabric over 27 test garments (kids 98/140, women's 38): 9 % less fabric in total and up to 28 % per garment, with stricter clearances than before (10 mm from the selvages, exact 5 mm gaps), e.g. women's trousers 38 1.93 → 1.38 m, A-line skirt 38 0.91 → 0.71 m, hoodie 140 1.03 → 0.89 m. Pieces that are not cut on the fold keep 5 mm from the fold; "(flipped)" is only shown where it matters (single layer); the picture is sized to the fabric.
+- **Precise step texts for every garment** (pants, skirt, dress, T-shirt, hoodie, beanie, loop, doll clothes), as in printed sewing instructions: one sentence per action, with how the pieces lie, which notches meet, the seam allowance, where to start and stop sewing and how to press. Gathering, threading elastic, bindings, hems and the loop's cross seam are spelled out step by step. German texts included.
+- The "Done!" panel says what to check on the test garment for this kind of garment (tops: chest, sleeve length, neckline; doll clothes: over the head).
+
+### Fixed
+- **Inseam picture of all pants**: the back leg was laid onto the front along the inseam alone and ended up turned against it, although the side seam already joins the two. The booklet now shows the leg opened out at the sewn side seam (grey dashed = already sewn) and folded right sides together, with the inseam in red on the top layer. Every booklet step now knows what earlier steps sewed (`steps.annotate_progress`).
+
+## [1.4.0] - 2026-11-08
+
+### Changed
+- **Leaner SKILL.md** (193 instead of 299 lines, about 40 % fewer tokens on every use): the workflow stays in SKILL.md; the option and format reference, machines, doll clothes and the photo mode B internals moved to `references/options.md`, `references/machines.md`, `references/doll_clothes.md` and `references/photo_guide.md`, loaded only when needed. SKILL.md no longer claims all output is English (`--lang de`).
+- **Faster layouts and photo fits, same results**: the layout packer only searches the filled band of the page instead of the whole, mostly empty canvas (roll, A4, A0/A1, cutting layout about 2× faster); the DXF sheet uses the quick packing strategies; the top contour in the flat-lay model is computed for all positions at once (photo mode B for tops about 2× faster). Layouts and fitted values are identical.
+- **CI in about 4 instead of 13 minutes**: tests run in parallel on all cores (`pytest-xdist`), the full suite with coverage runs once on Python 3.12, Python 3.10 runs the quick tests, and a new push to a PR cancels the older run.
+
+## [1.3.0] - 2026-11-07
+
+### Added
+- **Automatic booklet check** (`scripts/booklet_qa.py`), run on every build: front/back views must show every band, cuff, sleeve and the hood and two separate legs for pants; stacked seam pieces must lie on each other; each picture must fill its area; no picture may fall back to the pictogram; no text may leave its panel or overlap another. Findings go into the "Booklet check" section of `validation_report.md`, into `run(...)["booklet_issues"]` and into the warnings; the tests require zero findings for the reference garments.
+- **Contact sheets for the visual check** (`scripts/booklet_pages.py <pdf>`): every booklet page side by side with its page number; SKILL.md step 6 makes looking at every sheet mandatory before delivery.
+- "Put one leg inside the other" is drawn like the reference: leg 1 wrong side out, leg 2 turned right side out and pushed in up to the top, the hidden part dotted. The last step is now "Final pressing" with an iron.
+- README rewritten for prompting: example prompts, claude.ai zip install and update steps, and pictures for each feature (pattern, booklet, cutting layout, nested sizes, photo copy, doll clothes) in `docs/images/`; command line, options and tests moved to `docs/DEEP_DIVE.md`. New examples 5 (hoodie 140 with kangaroo pocket) and 6 (nested joggers 98/110/122); every example folder has its own README; `tools/make_examples.py images` rebuilds the README pictures and example READMEs.
+- **Pants options** (#39): `fake_fly` (J topstitch line on the left front leg with its own step; the step only says the stitching catches the crotch seam allowance when it really does), `back_pockets: 1|2` with `back_pocket_side` (a single pocket is cut once and its mark names the leg), `hem_finish: "elastic_casing"` (hem allowance 5 mm + elastic + 10 mm, 3 cm opening at the inseam, elastic length per leg in the notes and steps), `pocket_bag_fabric` (the inner pocket bag becomes its own "Lining" group in the cutting layout and fabric consumption).
+- **Overlocker without a sewing machine** (`--machines overlocker,hand` or `overlocker_only`): seams on the overlocker with 7.5 mm allowance (woven too), every straight-stitch step by hand (back stitch, blind stitch, tacking stitch, hand bar tack, a box of hand stitches for elastic), no separate edge-finishing steps, overlocker hints in the steps and the machines table, hem casing finished and folded once. (#39)
+- **German output** (`--lang de`, spec `language`): every output text goes through one central string table (`scripts/i18n.py`, `scripts/i18n_de.py`), with German file names (`naehanleitung.pdf`, `pruefbericht.md`, `zuschnittplan.png`, `…_kleben.pdf` …), decimal commas and "Gr. 122". A test checks that the reference order leaves no English text in the Markdown, SVG and PDF outputs. (#39)
+- **Booklet v2** (#39): title page with the finished garment from the front and the back and all key data (size, fabric amounts, notions, machines, seam allowance, parts/steps, difficulty and time); parts and material page with fabric colours (corduroy brown with wales, lining blue, rib green; right and wrong side differ) and a legend of colours and lines (red solid = machine, red dotted = by hand, blue dash-dot = fold line, chalk = marking) plus what "left/right (as worn)" means; basics pages for the machines in use (overlocker: allowance vs. knife and needle, test seam, curves, thread chain; hand stitches with a picture each; sewing machine); **two steps per page** with number badge, tool icons with labels, ×2 badge ("both legs"), picture left, 2–4 numbered actions right and yellow **Important** / green **Tip** boxes; ✓/✗ pictures for the single back pocket and for pressing a fabric with nap; a "Label the pieces" step with FL/FR/BL/BR tape tags for pants with a fake fly or one back pocket; magnifier insets with captions; 1:1 templates with a 5 × 5 cm control square (fake fly J line); a "Done!" page. Every text is wrapped to its measured width; a test checks that no text leaves its panel and no labels overlap, for pants, T-shirt, hoodie, skirt and dress.
+- Option `title` for every garment: the name on the pieces, in the instructions and in the file names. (#39)
+- Fabrics **corduroy** and **velvet**, with a nap: the cutting layout keeps every main-fabric piece waist up ("Nap ↓, all pieces waist up") and the fabric consumption follows; option `nap` for any other fabric. Pressing note per fabric (corduroy/velvet from the wrong side on a terry towel). (#39)
+
+### Changed
+- **Booklet layout after the reference booklet**: centred title page with size, fit and fabric in one line, large front and back views and a "Sewn with …" box with the machine and tool icons; the parts page shows every part large and at the same scale (big parts in the first row, bands and pockets below) with a navy count badge on the part, the seam allowances, the material in two columns (fabric amounts, notions, machines with their stitch settings, thread, clips, chalk, iron, towel) and "Colours in this booklet"; the basics page has a box per machine; steps get navy number badges and bullets, one-paragraph "⚠ Important:" / "Tip:" boxes and the ×2 badge bottom right; the "Done!" panel fills the free half of the last step page, the 1:1 templates come after it; page numbers at the bottom.
+- Privacy: `project.json` from photo mode B stores only the photo's file name, not its full local path; `profiles/` and `*.smis` measurement exports are git-ignored so personal measurements don't get committed by accident.
+- The back-pocket step uses the pattern's real seam allowance instead of a fixed 1 cm. (#39)
+
+### Fixed
+- **Front and back views** (title page, "Done!") are whole garments now (`scripts/views.py`): pants with both legs apart below the crotch, the centre seam, the waistband across the whole waist (gathered when it is elastic) and leg cuffs with the leg gathered into them; tops and dresses with both sleeves set into the armholes, cuffs, hem band, neckband or hood and the kangaroo pocket; the dress skirt gathered onto the bodice; skirts with their waistband. Before, harem pants showed a floating, too narrow back waistband and hoodies had no sleeves.
+- **Seam pictures**: two pieces whose seam edges differ in shape (pants side seams and inseams, sleeve into armhole) are no longer stacked skewed across each other; they lie side by side, right side up, the seam edges facing each other and marked red, notches and "right sides together" between them. A side panel already sewn to the front is drawn on, so the side seam runs up to the waist. "Put one leg inside the other" shows the real legs; the kangaroo pocket is drawn whole on its placement (its mark was missing the corner at centre front).
+
+## [1.2.0] - 2026-11-07
+
+### Added
+- **Illustrated sewing booklet**: `sewing_instructions.pdf` now starts with a vector booklet: cover with all parts, parts list with letters and counts, fabric and notions, machines and tools with the stitch settings, then numbered steps (six per page) with one action each. Every step has a picture drawn from the real pieces: the two pieces right sides together (right side shaded, wrong side hatched) with pins, stitch line, sewing direction and notches; bands closed into rings, folded, quartered and sewn on stretched; hems and topstitching with a cross-section detail; close-ups for short edges; ×2 for steps done on both legs/sleeves. Works for every garment, option and the doll mode. The reference pages (printing, measurements, pieces, validation) follow. (#37)
+- Structured steps (`scripts/steps.py`): garment modules describe their construction with `assembly()`; the stitch kind of each step is turned into a machine and stitch (overlocker, coverstitch, sewing machine with zigzag/stretch stitch/twin needle) from the spec option `machines`. (#37)
+- **Your machines** (`--machines sewing,overlocker,coverstitch,…`, spec `machines`, workshop file via
+  `profiles.py machines set …`, or per profile): the skill asks which machines you sew with (sewing machine
+  with zigzag or straight stitch only, stretch stitch, twin needle, overlocker, coverstitch) and adapts the
+  pattern to them. Knit seams on the overlocker get 7.5 mm seam allowance, woven seams on a
+  straight-stitch-only machine 15 mm for French seams; every seam and hem step names your machine and
+  stitch, and the instructions get a "Your machines" table with stitch settings and needles per kind of
+  step. `machines.method()` / `tool_for()` give the machine and stitch per step as data. (#36)
+- Validation check for every cut-on-fold edge: straight, no seam allowance, neighbouring edges at 90° (no peak or dip at the centre once unfolded), on grain. (#35)
+- The *Release* workflow can be started manually on `main` and creates the tag itself (#34)
+
+### Changed
+- **Cut-on-fold edges**: every fold edge now carries the standard bracket symbol (two arrows pointing at the fold, "PLACE ON FOLD") instead of a text-only label. It is sized to the edge, so short fold edges such as a doll waistband get "ON FOLD"/"FOLD" in a smaller font instead of text running off the piece, and it keeps clear of fold-over lines and the grainline; the label block no longer covers it. (#35)
+- The sewing instructions explain how to cut the pieces marked "on fold" for the layout used (on the fabric fold, or opened out on a single layer), and the cutting layout marks opened-out fold pieces "(unfolded)". (#35)
+
+## [1.1.0] - 2026-11-07
+
+### Added
+- **Doll clothes mode** (`generate.py --doll`): dress, skirt, pants and T-shirt for dolls, drafted from doll measurements with 6 mm seam allowance and a back opening with Velcro; also available in photo mode B (`--doll`) (#32).
+- **Photo mode B for tops**: T-shirts and raglan tops from a flat-lay photo (`--type top`) (#30).
+- **Nested multi-size patterns** (`--size 98,110,122`) with one PDF layer per size (#29).
+- **Illustrated sewing instructions** with a diagram for every seam step (#28).
+- **Fit adjustments** from test-garment feedback (#27).
+- **Saved body-measurement profiles** per person (#26).
+- **Dress module**: bodice + skirt, or A-line T-shirt dress (#25).
+- **Hoodie zip-up jacket** variant (#24).
+- **Pants options**: flared, bootcut and tapered legs, cargo pockets, shorts with turn-up (#23).
+- **Imperial units** and US/UK size systems (#22).
+- **Projector output**: single 1:1 page with calibration grid, light and dark (#21).
+- **Configurable seam and hem allowance**, including patterns without allowance (#20).
+- **Cutting layout on folded fabric** (double layer) (#19).
+- **DXF (AAMA) export**, mirrored hem corners, notch projection, measurement files and construction values (#18).
+
+### Changed
+- README, SKILL.md, CONTRIBUTING and drafting rules aligned with the code (#31).
+
+## [1.0.0] - 2026-11-06
+
+First public version: pants, T-shirt, hoodie, skirt, beanie and loop modules; roll, A4, A0 and Letter output; validation report, sewing instructions, photo mode B for pants; CI, release workflow and contributor guide.
