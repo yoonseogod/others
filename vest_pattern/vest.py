@@ -48,9 +48,9 @@ def seg_len(pts):
 # waist line y=0.  Bust 88 / waist 70 / hip 94 (size M)
 F_neck   = (7.5, 42.0)
 F_shoul  = (11.5, 41.0)
-F_under  = (22.5, 18.5)
+F_under  = (23.5, 18.5)
 F_waist  = (21.0, 0.0)
-F_side_b = (21.5, -6.0)
+F_side_b = (22.0, -5.0)
 F_tip    = (3.0, -15.0)
 F_edge_b = (-2.0, -9.0)
 F_edge_t = (-2.0, 15.0)   # top button / start of V
@@ -59,34 +59,34 @@ front_outline = path(F_edge_b, [
     [F_edge_t],
     [(1.0, 24.0), (5.0, 35.0), F_neck],            # V neckline (gentle curve)
     [F_shoul],                                      # narrow shoulder strap
-    [(13.0, 30.0), (16.0, 19.5), F_under],         # deep vest armhole
-    [(21.6, 10.0), (20.8, 4.0), F_waist],          # side seam (shaped)
+    [(13.0, 30.0), (16.5, 19.5), F_under],         # deep vest armhole
+    [(22.4, 10.0), (21.0, 4.0), F_waist],          # side seam (shaped)
     [F_side_b],
     [F_tip],                                         # pointed hem
     [F_edge_b],
 ])
 front_neck = path(F_edge_t, [[(1.0, 24.0), (5.0, 35.0), F_neck]])
-front_arm  = path(F_shoul, [[(13.0, 30.0), (16.0, 19.5), F_under]])
+front_arm  = path(F_shoul, [[(13.0, 30.0), (16.5, 19.5), F_under]])
 
 # ----- BACK (centre back on fold, x=0) -----
 B_cb_neck = (0.0, 41.0)
 B_neck    = (7.5, 43.5)
 B_shoul   = (11.5, 43.0)
-B_under   = (21.0, 18.5)
+B_under   = (22.0, 18.5)
 B_waist   = (19.5, 0.0)
-B_side_b  = (20.0, -5.0)
+B_side_b  = (20.5, -5.0)
 B_cb_b    = (0.0, -5.0)
 
 back_outline = path(B_cb_b, [
     [B_cb_neck],
     [(3.5, 41.0), (6.5, 42.0), B_neck],
     [B_shoul],
-    [(9.5, 33.0), (10.5, 22.0), B_under],          # racer-style cut-in armhole
-    [(20.6, 10.0), (19.4, 4.0), B_waist],
+    [(9.5, 33.0), (11.0, 22.0), B_under],          # racer-style cut-in armhole
+    [(21.4, 10.0), (19.7, 4.0), B_waist],
     [B_side_b],
     [B_cb_b],
 ])
-back_arm = path(B_shoul, [[(9.5, 33.0), (10.5, 22.0), B_under]])
+back_arm = path(B_shoul, [[(9.5, 33.0), (11.0, 22.0), B_under]])
 
 # darts (fish darts) : centre x, half width, top y, bottom y
 FRONT_DART = (10.5, 1.25, 17.0, -9.0)
@@ -131,7 +131,7 @@ def poly_mm(poly, tf):
     return [tf(p) for p in poly.exterior.coords]
 
 # small pieces: welt (finished 10.5 x 2.5, cut doubled on fold) and pocket bag
-welt_cm = [(0,0),(11.5,0),(11.5,7.0),(0,7.0)]          # incl. SA
+welt_cm = [(0,0),(10.5,0),(10.5,7.0),(0,7.0)]          # incl. SA
 bag_cm  = path((0, 0), [[(12.5, 0)], [(12.5, 14)], [(0, 14)], [(0, 0)]])  # incl. SA, rounded bottom later
 bag_cm  = path((0, 14), [[(0, 3)], [(0, 0.8), (1.2, 0), (3, 0)], [(9.5, 0)], [(11.3, 0), (12.5, 0.8), (12.5, 3)], [(12.5, 14)], [(0,14)]])
 welt_dx, welt_dy = 300, 40
@@ -196,14 +196,14 @@ def draw_pieces(c, ox, oy):
         x, y = tf_front((bx, by))
         c.circle((x-ox)*mm, (y-oy)*mm, 1.5*mm)
         c.setLineWidth(1.2); c.line((x-ox-2)*mm, (y-oy)*mm, (x-ox+18)*mm, (y-oy)*mm); c.setLineWidth(0.6)
-    text(c, "단추 / 단춧구멍 1.8cm (기어 단추)", tf_front((1, 9.5))[0]+5, tf_front((1, 9.5))[1], ox, oy, 7, rot=90)
+    text(c, "단추 1.8cm / 단춧구멍 2cm", tf_front((1, 9.5))[0]+5, tf_front((1, 9.5))[1], ox, oy, 7, rot=90)
     # pocket
     p0, p1 = tf_front(POCKET[0]), tf_front(POCKET[1])
     pocket_box = [p0, p1, (p1[0], p1[1]+25), (p0[0], p0[1]+25)]
     draw_poly(c, pocket_box, ox, oy, width=1.0)
     text(c, "웰트 포켓 위치", (p0[0]+p1[0])/2, (p0[1]+p1[1])/2-8, ox, oy, 7)
     # notches
-    notch(c, (21.4, 10.0), tf_front, (1, 0), ox, oy)
+    notch(c, (22.23, 10.0), tf_front, (1, 0), ox, oy)
     notch(c, (14.6, 25.0), tf_front, (0.95, 0.3), ox, oy)
     notch(c, (21.0, 0.0), tf_front, (1, 0), ox, oy)
     grain(c, tf_front((6, 0))[0], tf_front((6, -8))[1], tf_front((6, 28))[1], ox, oy)
@@ -221,7 +221,7 @@ def draw_pieces(c, ox, oy):
     text(c, "골선 FOLD — 원단을 접어서 재단", a[0]+4, (a[1]+b[1])/2, ox, oy, 9, bold=True, rot=90)
     a, b = tf_back((0, 0)), tf_back((19.5, 0))
     c.setDash(1, 2); c.line((a[0]-ox)*mm, (a[1]-oy)*mm, (b[0]-ox)*mm, (b[1]-oy)*mm); c.setDash()
-    notch(c, (20.6, 10.0), tf_back, (1, 0), ox, oy)
+    notch(c, (21.0, 10.0), tf_back, (1, 0), ox, oy)
     notch(c, (19.5, 0.0), tf_back, (1, 0), ox, oy)
     grain(c, tf_back((15, 0))[0], tf_back((15, -3))[1], tf_back((15, 14))[1], ox, oy)
     tx, ty = tf_back((5, 25))
@@ -232,10 +232,10 @@ def draw_pieces(c, ox, oy):
     # WELT
     w = [(x*10+welt_dx, y*10+welt_dy) for x, y in welt_cm] + [(welt_dx, welt_dy)]
     draw_poly(c, w, ox, oy, close=False)
-    c.setDash(1, 2); c.line((welt_dx-ox)*mm, (welt_dy+35-oy)*mm, (welt_dx+115-ox)*mm, (welt_dy+35-oy)*mm); c.setDash()
-    text(c, "③ 웰트 WELT  4장", welt_dx+57, welt_dy+50, ox, oy, 10, bold=True)
-    text(c, "(겉감 2 + 심지 2) 접는선 ·····", welt_dx+57, welt_dy+20, ox, oy, 7)
-    text(c, "시접 1cm 포함", welt_dx+57, welt_dy+12, ox, oy, 7)
+    c.setDash(1, 2); c.line((welt_dx-ox)*mm, (welt_dy+35-oy)*mm, (welt_dx+105-ox)*mm, (welt_dy+35-oy)*mm); c.setDash()
+    text(c, "③ 웰트 WELT  4장", welt_dx+52, welt_dy+50, ox, oy, 10, bold=True)
+    text(c, "(겉감 2 + 심지 2) 접는선 ·····", welt_dx+52, welt_dy+20, ox, oy, 7)
+    text(c, "시접 1cm 포함", welt_dx+52, welt_dy+12, ox, oy, 7)
     # BAG
     bg = [(x*10+bag_dx, y*10+bag_dy) for x, y in bag_cm]
     draw_poly(c, bg, ox, oy, close=False)
@@ -291,8 +291,9 @@ def cover(c):
     line("2. A1 페이지의 5cm 테스트 사각형을 자로 재서 정확히 5cm인지 확인합니다.")
     line("3. 각 페이지의 회색 점선 바깥 여백을 자르고, ◆ 표시와 선을 맞춰 아래 배치도 순서로 테이프로 붙입니다.")
     y -= 2
-    line("■ 치수 (완성 기준, M)", 11, True, 6.5)
-    line("가슴둘레 88cm  ·  허리둘레 70cm  ·  앞 길이(어깨~앞 끝) 약 57cm  ·  뒤 길이 약 46cm")
+    line("■ 치수 (사이즈 M)", 11, True, 6.5)
+    line("몸 치수: 가슴 88cm · 허리 70cm   →   완성 치수: 가슴 약 92cm · 허리 약 72cm (몸에 붙는 핏)")
+    line("앞 길이(어깨~앞 끝) 약 57cm  ·  뒤 길이(뒷목~밑단) 약 46cm  ·  웰트 포켓 입구 약 8.5cm")
     line("사이즈 조정: 옆선에서 1cm 늘리면 둘레 4cm 증가. 길이는 허리선 위아래에서 평행하게 늘리거나 줄이세요.")
     y -= 2
     line("■ 재단 목록 (시접 1cm 포함 — 바깥 실선 = 재단선, 안쪽 점선 = 박음선)", 11, True, 6.5)
@@ -311,7 +312,7 @@ def cover(c):
         "4. 겉감과 안감을 겉끼리 맞대고 앞단, 밑단, 목둘레, 진동둘레를 박습니다. 옆선만 남겨둡니다.",
         "5. 곡선 시접에 가위집을 넣고, 어깨 끈 속으로 뒤판을 빼내어 뒤집습니다 (bagging 방식).",
         "6. 옆선: 겉감 앞·뒤, 안감 앞·뒤를 이어 하나의 링으로 박고, 안감에 남긴 창구로 정리한 뒤 공그르기.",
-        "7. 다림질 후 단춧구멍(1.8cm)을 만들고 기어 단추를 답니다. 왼쪽 가슴에 브로치를 달아 완성!",
+        "7. 다림질 후 입었을 때 오른쪽 앞판에 단춧구멍(2cm), 왼쪽 앞판에 기어 단추를 답니다. 브로치를 달아 완성!",
     ]:
         line(s, 9)
     y -= 3
