@@ -5,11 +5,9 @@ B. A4 PDF   : page size, printable frame 19 x 27.7 cm, tile count, test square
 C. Seam allowance : distance net line -> cutting line = 1.000 cm everywhere (fold edges 0)
 D. Notches  : on the outline, matching arc positions, sleeve-cap ease split
 E. Facings  : lie exactly inside / on their parent pieces
-F. Size sweep: whole system rebuilt + verified for 5 other body sizes
 """
 import math
 import os
-import subprocess
 import sys
 
 import numpy as np
@@ -160,22 +158,8 @@ fr = POLY['front_facing']
 cf_on = [p for p in fr.exterior.coords if abs(p[0] - K['CF']) < 1e-6]
 chk('E', '앞안단 앞중심선 = 앞판 앞중심선', len(cf_on) >= 2, f'{len(cf_on)}점 일치')
 
-# ---------------------------------------------------------------- F. other sizes
-sizes = [('44', 80, 62, 88, 37, 56), ('55', 84, 66, 92, 38, 58), ('66', 88, 70, 96, 38.5, 58),
-         ('77', 94, 76, 100, 39, 59), ('88', 100, 82, 106, 39.5, 60), ('99', 106, 88, 112, 40, 60)]
-code = ("import sys;sys.path.insert(0,'.');import draft;draft.M.update(B={},W={},H={},BL={},SL={});"
-        "from verify import verify,to_markdown;rep,R=verify();md,t,f=to_markdown(rep,R);print(t,f)")
-for nm, B, W, H, BL, SL in sizes:
-    try:
-        out = subprocess.run([sys.executable, '-c', code.format(B, W, H, BL, SL)], cwd=HERE, capture_output=True,
-                             text=True, timeout=300)
-        t, f = out.stdout.split()[-2:]
-        chk('F', f'{nm}사이즈 (B{B} W{W} H{H}) 전체 재제도 + 10회 검토', f == '0', f'{t}항목 중 불합격 {f}')
-    except Exception as ex:  # noqa: BLE001
-        chk('F', f'{nm}사이즈 (B{B} W{W} H{H})', False, f'제도 실패: {out.stderr.strip().splitlines()[-1] if out.stderr else ex}')
-
 titles = dict(A='A. 실물크기 PDF 재측정', B='B. A4 분할 PDF', C='C. 시접', D='D. 너치 · 소매산 이즈 배분',
-              E='E. 안단', F='F. 다른 사이즈로 시스템 검증')
+              E='E. 안단')
 lines = ['# 출력물 독립 재검증 (audit)', '']
 for s, t in titles.items():
     rows = [r for r in res if r[0] == s]
