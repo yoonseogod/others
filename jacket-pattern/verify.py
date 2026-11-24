@@ -160,7 +160,10 @@ def verify(R=None):
     rep.cond('앞 진동(다트 닫은 착용상태) 최소 곡률반경 ≥ 2.5cm', rf >= 2.5, f'{rf:.2f}cm')
     rep.cond('뒤 진동 최소 곡률반경 ≥ 2.5cm', rb >= 2.5, f'{rb:.2f}cm')
     rep.add('앞 진동(다트 닫은 상태) 변곡점 수', inflections(C['arm_fc']), 0, 0)
-    rep.info('앞품 감소 (진동이 앞품선 안쪽으로 들어간 양)', C['up_f'][:, 0].max() - K['xfw'], 'cm')
+    rep.info(f"앞진동 자동선택: G점 접선 {K['front_arm_T']:.0f}°, 장력 {K['front_arm_k']}", 0)
+    fwl = C['up_f'][:, 0].max() - K['xfw']
+    rep.cond(f"앞품 감소 ≤ {K['front_width_lim']:.2f}cm (진동이 앞품선 안쪽으로 들어간 양)", fwl <= K['front_width_lim'] + 1e-9,
+             f'{fwl:.2f}cm')
     rep.info('뒤 진동둘레 AH(b)', K['AHb'], 'cm')
     rep.info('앞 진동둘레 AH(f)', K['AHf'], 'cm')
 
@@ -282,6 +285,12 @@ def verify(R=None):
     rep.add('원통 커프 높이', plen(s1_), J['cuff_h'], 1e-9, 'cm')
     for nm, a_, b_ in (('윗선-옆선', ct, s2_), ('옆선-아랫선', s2_, cb_), ('아랫선-옆선', cb_, s1_), ('옆선-윗선', s1_, ct)):
         rep.add(f'원통 커프 모서리 {nm} (직각)', ang(a_, 'e', b_, 's'), 90, TOL_A, '°')
+    bf = R['pieces']['back_facing']
+    rep.add('뒷목안단 목선 = 요크 목선', plen(bf[1][1]) - plen(C['neck_b']), 0, 1e-9, 'cm')
+    rep.add('뒷목안단 아랫선 ∠뒤중심 (직각)', ang(bf[0][1], 's', bf[3][1], 'e'), 90, TOL_A, '°')
+    rep.add('뒷목안단 아랫선 ∠어깨 (직각)', ang(bf[2][1], 'e', bf[3][1], 's'), 90, TOL_A, '°')
+    rep.add('뒷목안단 어깨선 길이', plen(bf[2][1]), 5.0, 1e-9, 'cm')
+    rep.add('뒷목안단 아랫선 변곡점 0', inflections(C['bf_low']), 0, 0)
     rep.add('벨트 길이 = 완성허리 + 1 + 18(겹침)', K['belt_len'], (W + J['waist_ease']) + 1 + 18, 1e-9, 'cm')
     rep.cond('탭 5개가 앞중심선 위, 허리선 위에 위치', all(0 < y < K['CFnj'][1] for y in K['tab_y']),
              ', '.join(f'{y:.1f}' for y in K['tab_y']))

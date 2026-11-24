@@ -7,7 +7,7 @@ import math
 import numpy as np
 from scipy.interpolate import PchipInterpolator, CubicSpline
 from scipy.optimize import brentq
-from geom import (cluster, spline_through, P, unit, dirdeg, rot, rotv, plen, tan_start, tan_end, line, hermite,
+from geom import (min_radius, inflections, cluster, spline_through, P, unit, dirdeg, rot, rotv, plen, tan_start, tan_end, line, hermite,
                   chain, split_at_line, point_at_len, rev, N)
 
 # ------------------------------------------------------------------ measurements
@@ -139,7 +139,13 @@ def build():
     SNPbj = SNPb + ush_b * J['neck_widen']
     ush_y = unit(SPy - SNPbj)
     Lsh = float(np.linalg.norm(SPy - SNPbj))
-    arm_y = hermite(SPy, rotv(ush_y, -90), Ay, rotv(tan_end(up_b), thd), J['k_yoke_arm'][0], J['k_yoke_arm'][1])
+    # yoke armhole: pick the tension that gives a single-direction curve (no S) - size independent
+    def yoke_arm(k0, k1):
+        return hermite(SPy, rotv(ush_y, -90), Ay, rotv(tan_end(up_b), thd), k0, k1)
+    cand = [(inflections(yoke_arm(k0, k1)), -min_radius(yoke_arm(k0, k1)), k0, k1)
+            for k0 in np.arange(0.4, 1.41, 0.1) for k1 in np.arange(0.4, 1.41, 0.1)]
+    _, _, ky0, ky1 = min(cand)
+    arm_y = yoke_arm(ky0, ky1)
     neck_b = hermite(CBn, P(1, 0), SNPbj, rotv(ush_y, 90), 1.1, 0.45)
     yoke = [('fold_cb', line(P(0, ysb), CBn)), ('neck', neck_b), ('shoulder', line(SNPbj, SPy)),
             ('armhole', arm_y), ('yoke_seam_out', line(Ay, D)), ('yoke_seam_in', line(D, P(0, ysb)))]
@@ -176,8 +182,23 @@ def build():
     Sf = side_f[0]
     Sfc = rot(Sf, BP, -dartf)
     efc = rotv(tan_start(side_f), -dartf)
-    arm_fc = chain([SPf, G, Sfc], [rotv(ush_f, 90), dirdeg(J['front_arm_T']), rotv(efc, -90)],
-                   ks=[(1.0, 1.0), (1.3, 1.0)])
+    # front armhole (dart closed): search tangent at G and lower tension -> no S-curve, largest
+    # minimum radius, while the curve may move inside the front-width line by at most 0.85 cm.
+    def front_arm(T, k, ku, ke):
+        return chain([SPf, G, Sfc], [rotv(ush_f, 90), dirdeg(T), rotv(efc, -90)], ks=[(1.0, ku), (k, ke)])
+    best = None
+    lim = 0.85 * B / 84          # allowed front-width reduction scales with size
+    for T in np.arange(-100.0, -150.1, -2.0):
+        for k in (1.0, 1.15, 1.3, 1.5, 1.75, 2.0):
+            for ku, ke in ((0.8, 1.0), (1.0, 1.0), (1.2, 1.0), (0.8, 0.7), (1.0, 0.7)):
+                c = front_arm(T, k, ku, ke)
+                up, lo = split_at_line(c, G, P(1, 0))
+                loss = up[:, 0].max() - xfw
+                key = (inflections(c) + inflections(up) + inflections(lo) > 0, loss > lim, -min_radius(c))
+                if best is None or key < best[0]:
+                    best = (key, T, k, ku, ke)
+    arm_fc = front_arm(*best[1:])
+    K.update(front_arm_T=best[1], front_arm_k=best[2:], yoke_arm_k=(ky0, ky1), front_width_lim=lim)
     up_f, lowc_f = split_at_line(arm_fc, G, P(1, 0))
     up_f[-1] = G
     lowc_f[0] = G
@@ -326,6 +347,16 @@ def build():
     snp_notch, _ = point_at_len(cn, plen(neck_b))
     notches["collar_snp"] = (snp_notch,)
     pieces['collar'] = collar
+
+    # ---- back neck facing: 6 cm at CB, 5 cm along the shoulder, lower edge perpendicular to
+    #      CB (fold) and to the shoulder seam
+    fw_cb, fw_sh = 6.0, 5.0
+    shp = SNPbj + ush_y * fw_sh
+    bf_low = hermite(P(0, CBn[1] - fw_cb), P(1, 0), shp, rotv(ush_y, 90), 1.0, 0.8)
+    back_facing = [('fold_cb', line(P(0, CBn[1] - fw_cb), CBn)), ('neck', neck_b), ('shoulder', line(SNPbj, shp)),
+                   ('lower', rev(bf_low))]
+    pieces['back_facing'] = back_facing
+    curves['bf_low'] = bf_low
     curves.update(collar_neck=cn, collar_top=ctop)
     K.update(neck_len=Ln, collar_x=xe)
 

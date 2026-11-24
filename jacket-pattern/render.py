@@ -51,13 +51,18 @@ def polys():
     for n, pc in R['pieces'].items():
         d[n] = Polygon(outline(pc))
     fr = d['front']
-    shp, _ = point_at_len(outline([('s', R['pieces']['front'][0][1])]), 4.0)   # 4 cm from SNP on shoulder
-    a, b = shp, P(K['CF'] - 7.0, -30)
-    dirv = unit(b - a)
-    big = Polygon([a - dirv * 80, b + dirv * 80, b + dirv * 80 + P(80, 0), a - dirv * 80 + P(80, 0)])
-    d['front_facing'] = fr.intersection(big)
-    yk = d['yoke']
-    d['back_facing'] = yk.intersection(LineString(R['curves']['neck_b']).buffer(6.0))
+    # front facing: 4 cm along the shoulder, leaves the shoulder at 90°, reaches CF-7 cm at the
+    # chest line heading straight down, then runs parallel to CF to the hem (one smooth inner edge)
+    from geom import hermite, line as gline, rotv as grotv
+    sh = R['pieces']['front'][0][1]
+    ush = unit(sh[-1] - sh[0])
+    shp = sh[0] + ush * 4.0
+    q = P(K['CF'] - 7.0, K['yC'])
+    curve = hermite(shp, grotv(ush, 90), q, P(0, -1), 1.0, 1.0)
+    inner = np.vstack([shp - grotv(ush, 90) * 2.0, curve, P(q[0], -60)])
+    cutter = Polygon(np.vstack([inner, [[200, -60], [200, inner[0][1] + 50], [inner[0][0], inner[0][1] + 50]]]))
+    d['front_facing'] = fr.intersection(cutter)
+    d['_ff_inner'] = curve
     return d
 
 

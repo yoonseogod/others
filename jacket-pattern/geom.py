@@ -149,13 +149,35 @@ def spline_through(pts, d0, d1, n=N):
     return cs(t)
 
 
-def inflections(pts, trim=0.02):
-    """Number of curvature sign changes (ignores near-straight noise)."""
+def inflections(pts, min_sag=0.005):
+    """Number of real curvature reversals.  The curve is cut at every curvature sign change;
+    an arc only counts if it actually bows away from its chord by more than min_sag
+    (0.005 cm = 0.05 mm, below any cutting precision).  Arcs that are flatter are merged
+    with their neighbours, so numerical wobble on straight-ish parts is not counted."""
+    pts = np.asarray(pts, float)
     d1 = np.gradient(pts, axis=0)
     d2 = np.gradient(d1, axis=0)
     k = d1[:, 0] * d2[:, 1] - d1[:, 1] * d2[:, 0]
-    m = int(len(k) * trim)
-    k = k[m:len(k) - m]
-    thr = np.abs(k).max() * 0.02
-    sg = np.sign(k[np.abs(k) > thr])
-    return int(np.sum(sg[1:] != sg[:-1]))
+    sg = np.sign(k)
+    cuts = [0] + [i for i in range(1, len(sg)) if sg[i] != 0 and sg[i - 1] != 0 and sg[i] != sg[i - 1]] + [len(pts) - 1]
+    signs = []
+    for a, b in zip(cuts[:-1], cuts[1:]):
+        if b - a < 2:
+            continue
+        seg = pts[a:b + 1]
+        c = seg[-1] - seg[0]
+        L = np.linalg.norm(c)
+        if L < 1e-9:
+            continue
+        dev = ((seg - seg[0]) @ np.array([-c[1], c[0]])) / L
+        sag = np.abs(dev).max()
+        if sag > min_sag:
+            signs.append(np.sign(np.median(k[a:b + 1])))
+    return int(sum(1 for i in range(1, len(signs)) if signs[i] != signs[i - 1]))
+
+
+def min_radius(pts):
+    d1 = np.gradient(pts, axis=0)
+    d2 = np.gradient(d1, axis=0)
+    k = np.abs(d1[:, 0] * d2[:, 1] - d1[:, 1] * d2[:, 0]) / np.linalg.norm(d1, axis=1) ** 3
+    return float(1 / k.max())
