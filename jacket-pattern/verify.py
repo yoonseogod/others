@@ -263,7 +263,7 @@ def verify(R=None):
     rep.add('소매길이 (산꼭지→소매부리선)', -K['Wf'][1], M['SL'], 1e-9, 'cm')
 
     # ---------------------------------------------------------------- R9
-    rep.round('9차 검토 - 칼라 · 러플 · 탭/벨트')
+    rep.round('9차 검토 - 칼라 · 원통 커프 · 탭/벨트')
     cn = seg(R, 'collar', 'neck_edge')
     rep.add('칼라 목선 = 몸판 목둘레(앞+뒤)', plen(cn) - (plen(C['neck_b']) + plen(C['neck_f'])), 0, 1e-6, 'cm')
     rep.add('칼라 뒤중심 ∠목선 (직각)', ang(seg(R, 'collar', 'fold_cb'), 'e', cn, 's'), 90, TOL_A, '°')
@@ -274,10 +274,14 @@ def verify(R=None):
     i = int(np.argmin(np.linalg.norm(cn - sn, axis=1)))
     rep.add('칼라 SNP노치 = 뒷목둘레', plen(cn[: i + 1]) - plen(C['neck_b']), 0, 0.01, 'cm')
     rep.add('칼라 높이', np.linalg.norm(seg(R, 'collar', 'cf_edge')[-1] - seg(R, 'collar', 'cf_edge')[0]), J['collar_h'], 1e-9, 'cm')
-    ri = seg(R, 'ruffle', 'inner')
-    rep.add('러플 안쪽 호 = 소매부리 길이', plen(ri) - K['wrist_len'], 0, 0.005, 'cm')
-    rep.add('러플 끝선 ∠안쪽호 (직각)', ang(ri, 'e', seg(R, 'ruffle', 'end2'), 's'), 90, TOL_A, '°')
-    rep.add('러플 폭', np.linalg.norm(seg(R, 'ruffle', 'end1')[0] - seg(R, 'ruffle', 'end1')[-1]), J['ruffle_w'], 1e-9, 'cm')
+    ct, cb_ = seg(R, 'cuff', 'top'), seg(R, 'cuff', 'bottom')
+    s1_, s2_ = seg(R, 'cuff', 'side1'), seg(R, 'cuff', 'side2')
+    rep.add('원통 커프 윗선 = 소매부리 길이', plen(ct) - K['wrist_len'], 0, 1e-9, 'cm')
+    rep.add('원통 커프 아랫선 = 윗선 (원통: 위아래 둘레 같음)', plen(cb_) - plen(ct), 0, 1e-9, 'cm')
+    rep.add('원통 커프 양 옆선 길이 같음 (봉합선)', plen(s1_) - plen(s2_), 0, 1e-9, 'cm')
+    rep.add('원통 커프 높이', plen(s1_), J['cuff_h'], 1e-9, 'cm')
+    for nm, a_, b_ in (('윗선-옆선', ct, s2_), ('옆선-아랫선', s2_, cb_), ('아랫선-옆선', cb_, s1_), ('옆선-윗선', s1_, ct)):
+        rep.add(f'원통 커프 모서리 {nm} (직각)', ang(a_, 'e', b_, 's'), 90, TOL_A, '°')
     rep.add('벨트 길이 = 완성허리 + 1 + 18(겹침)', K['belt_len'], (W + J['waist_ease']) + 1 + 18, 1e-9, 'cm')
     rep.cond('탭 5개가 앞중심선 위, 허리선 위에 위치', all(0 < y < K['CFnj'][1] for y in K['tab_y']),
              ', '.join(f'{y:.1f}' for y in K['tab_y']))

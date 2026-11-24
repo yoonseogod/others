@@ -39,7 +39,7 @@ INFO = {
     'back_facing': ('뒷목안단', '겉감 1장 (골선) + 심지', 'fold_cb'),
     'sleeve': ('소매', '겉감 2장', None),
     'collar': ('스탠드칼라', '겉감 2장 (골선) + 심지 1', 'fold_cb'),
-    'ruffle': ('소매 러플', '겉감 2장 (안단 2)', None),
+    'cuff': ('원통 커프', '겉감 2장 (옆선 봉합 → 원통)', None),
     'tab': ('탭', '10장 (5쌍) + 심지', None),
     'belt': ('벨트', '2장 (겉/안) + 심지', None),
 }
@@ -124,9 +124,6 @@ def draw_notches(ax, name, dx=0, dy=0):
         a, b = p - n * 0.9, p + n * 0.9
         ax.plot([a[0] + dx, b[0] + dx], [a[1] + dy, b[1] + dy], color='crimson', lw=1.1)
     if name == 'sleeve':
-        v0, v1 = R['notches']['vent']
-        ax.plot([v0[0] + dx, v1[0] + dx], [v0[1] + dy, v1[1] + dy], color='crimson', lw=1.0, ls='--')
-        ax.text(v1[0] + dx + 0.4, v1[1] + dy, '트임 8cm', fontsize=6, color='crimson')
         ap, e1, e2 = K['apex'], K['E1'], K['E2']
         ax.text(ap[0] + dx + 0.4, ap[1] + dy, '팔꿈치다트', fontsize=6)
         ax.plot([0 + dx, 0 + dx], [0 + dy, -M['SL'] + dy], color='0.5', lw=0.5, ls='-.')
@@ -141,7 +138,7 @@ def draw_notches(ax, name, dx=0, dy=0):
 
 # ------------------------------------------------------------------ layout
 ROW1 = ['yoke', 'cb_panel', 'mid_back', 'side_back', 'side_front', 'front', 'front_facing']
-ROW2 = ['sleeve', 'collar', 'back_facing', 'ruffle']
+ROW2 = ['sleeve', 'collar', 'back_facing', 'cuff']
 GAP = 5.0
 
 
@@ -162,7 +159,7 @@ def layout():
         pos[n] = (x - b[0] + 2, low1 - b[3])
         x += b[2] - b[0] + GAP
         hmax = max(hmax, b[3] - b[1])
-    # tabs and belt beside ruffle
+    # tabs and belt beside cuff
     b = sa_poly('tab').bounds
     tx = x + 2
     for i in range(5):

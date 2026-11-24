@@ -27,11 +27,11 @@ J = dict(
     front_arm_T=-112.0,  # armhole tangent at front-width point G (dart closed)
     pr_beta=12.0, pr_bp_dir=-64.0, pr_k=0.6,
     cap_ease=1.3,       # sleeve-cap ease (denim/twill)
-    sleeve_wrist=22.0,  # finished sleeve width at wrist (before ruffle)
+    sleeve_wrist=22.0,  # finished sleeve width at wrist (before cuff)
     wrist_fwd=4.0,      # wrist centre shifted forward (arm hangs forward)
     elbow_dart=1.5,
     collar_h=3.5, collar_rise=1.0,
-    ruffle_w=10.0, ruffle_sweep=270.0,
+    cuff_h=10.0,        # straight cylinder cuff (covered later)
 )
 
 PCT = dict(a=.14, b=.15, c=.11, d=.35, e=.18, f=.07)   # Bunka waist dart distribution
@@ -302,12 +302,10 @@ def build():
     sh_notch, _ = point_at_len(cap, AHb * (1 + e / AH))
     yoke_notch, _ = point_at_len(cap, plen(low_b) * (1 + e / AH))
     pr_notch, _ = point_at_len(rev(cap), plen(low_f) * (1 + e / AH))
-    vent_base, _ = point_at_len(wrist, 6.0)
     K.update(AHb=AHb, AHf=AHf, AH=AH, cap_h=cap_h, depth=depth, wf=S['wf'], wb=S['wb'], dl=dl, off=S['off'], elbow_sh=S['sh'],
              cap_len=capL, ease=e, Bf=Bf, Bb=Bb, Wf=Wf, Wb=Wb, E1=E1, E2=E2, apex=apex, Ef=Ef, y_el=y_el,
              sh_notch=sh_notch, sh_offset=float(sh_notch[0]), cap_pts=S['cap_pts'])
-    notches.update(sleeve_sh=(sh_notch,), sleeve_yoke=(yoke_notch,), sleeve_pr=(pr_notch,), sleeve_elbow=(Ef,),
-                   vent=(vent_base, vent_base + P(0, 8.0)))
+    notches.update(sleeve_sh=(sh_notch,), sleeve_yoke=(yoke_notch,), sleeve_pr=(pr_notch,), sleeve_elbow=(Ef,))
     curves.update(cap=cap, cap_b=cap_b, cap_f=cap_f, fedge=fedge, be1=be1, be2=be2, wrist=wrist, fe1=fe1, fe2=fe2)
     pieces['sleeve'] = sleeve_p
 
@@ -331,18 +329,15 @@ def build():
     curves.update(collar_neck=cn, collar_top=ctop)
     K.update(neck_len=Ln, collar_x=xe)
 
-    # ============================ RUFFLE (circular flounce) ============================
+    # ============================ CUFF TUBE (straight cylinder) ============================
+    # Unrolled cylinder = rectangle: width = sleeve-hem length, height = cuff_h.
+    # Joined into a tube with one seam that lines up with the sleeve underarm seam.
     Lw = plen(wrist)
-    r = Lw / (math.radians(J['ruffle_sweep']))
-    R2 = r + J['ruffle_w']
-    a0 = 90 + J['ruffle_sweep'] / 2
-    th = np.radians(a0 - J['ruffle_sweep'] * cluster(N))
-    inner = np.c_[r * np.cos(th), r * np.sin(th)]
-    outer = np.c_[R2 * np.cos(th), R2 * np.sin(th)]
-    ruffle = [('inner', inner), ('end2', line(inner[-1], outer[-1])), ('outer', rev(outer)),
-              ('end1', line(outer[0], inner[0]))]
-    pieces['ruffle'] = ruffle
-    K.update(wrist_len=Lw, ruffle_r=r)
+    ch_ = J['cuff_h']
+    cuff = [('top', line(P(0, ch_), P(Lw, ch_))), ('side2', line(P(Lw, ch_), P(Lw, 0))),
+            ('bottom', line(P(Lw, 0), P(0, 0))), ('side1', line(P(0, 0), P(0, ch_)))]
+    pieces['cuff'] = cuff
+    K.update(wrist_len=Lw)
 
     # ============================ TAB / BELT ============================
     tw, tl, tp = 2.4, 7.0, 1.1
