@@ -51,12 +51,12 @@ def polys():
     for n, pc in R['pieces'].items():
         d[n] = Polygon(outline(pc))
     fr = d['front']
-    # front facing: 4 cm along the shoulder, leaves the shoulder at 90°, reaches CF-7 cm at the
+    # front facing: 5 cm along the shoulder, leaves the shoulder at 90°, reaches CF-7 cm at the
     # chest line heading straight down, then runs parallel to CF to the hem (one smooth inner edge)
     from geom import hermite, line as gline, rotv as grotv
     sh = R['pieces']['front'][0][1]
     ush = unit(sh[-1] - sh[0])
-    shp = sh[0] + ush * 4.0
+    shp = sh[0] + ush * 5.0          # = back neck facing shoulder width (sewn together)
     q = P(K['CF'] - 7.0, K['yC'])
     curve = hermite(shp, grotv(ush, 90), q, P(0, -1), 1.0, 1.0)
     inner = np.vstack([shp - grotv(ush, 90) * 2.0, curve, P(q[0], -60)])

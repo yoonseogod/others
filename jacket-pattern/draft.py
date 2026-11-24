@@ -11,7 +11,8 @@ from geom import (min_radius, inflections, cluster, spline_through, P, unit, dir
                   chain, split_at_line, point_at_len, rev, N)
 
 # ------------------------------------------------------------------ measurements
-M = dict(B=84.0, W=66.0, H=92.0, BL=38.0, HL=18.0, SL=58.0, wrist=16.0)
+M = dict(B=84.0, W=66.0, H=92.0, BL=38.0, HL=18.0, SL=58.0, wrist=16.0,
+         upper_arm=27.0)   # upper arm: typical size-55 value (not measured)
 
 # ------------------------------------------------------------------ design params
 J = dict(
@@ -24,9 +25,10 @@ J = dict(
     cb_waist=3.5,       # CB panel width at waist
     hem=dict(cb=-20.0, v=-19.5, outer=-17.5, side=-15.0, princess=-15.5, cf=-13.0),
     k_yoke_arm=(0.8, 0.8),
-    front_arm_T=-112.0,  # armhole tangent at front-width point G (dart closed)
+    front_width_loss_max=0.2,  # front armhole may move inside the Bunka front-width line by <= 0.2 cm
     pr_beta=12.0, pr_bp_dir=-64.0, pr_k=0.6,
-    cap_ease=1.3,       # sleeve-cap ease (denim/twill)
+    cap_ease=1.3,
+    biceps_ease=4.0,    # jacket sleeve: biceps width = upper arm + 4 cm       # sleeve-cap ease (denim/twill)
     sleeve_wrist=22.0,  # finished sleeve width at wrist (before cuff)
     wrist_fwd=4.0,      # wrist centre shifted forward (arm hangs forward)
     elbow_dart=1.5,
@@ -35,6 +37,23 @@ J = dict(
 )
 
 PCT = dict(a=.14, b=.15, c=.11, d=.35, e=.18, f=.07)   # Bunka waist dart distribution
+
+
+def root(f, lo, hi, n=24, xtol=1e-12):
+    """brentq on the first sign change found by scanning [lo, hi] (robust bracket)."""
+    def g(x):
+        try:
+            return f(x)
+        except (ValueError, IndexError):
+            return float('nan')
+    xs = np.linspace(lo, hi, n + 1)
+    fs = [g(x) for x in xs]
+    for i in range(n):
+        if fs[i] == 0:
+            return xs[i]
+        if fs[i] * fs[i + 1] < 0:      # nan compares False -> skipped
+            return brentq(f, xs[i], xs[i + 1], xtol=xtol)
+    raise ValueError(f'no root in [{lo}, {hi}]')
 
 
 class ProfileSeam:
@@ -182,27 +201,30 @@ def build():
     Sf = side_f[0]
     Sfc = rot(Sf, BP, -dartf)
     efc = rotv(tan_start(side_f), -dartf)
-    # front armhole (dart closed): search tangent at G and lower tension -> no S-curve, largest
-    # minimum radius, while the curve may move inside the front-width line by at most 0.85 cm.
-    def front_arm(T, k, ku, ke):
+    # front armhole (dart closed).  Passes the Bunka front-width point G (dart point); the tangent at
+    # G and the tensions are searched: no S-curve anywhere, front width reduced by at most 0.2 cm
+    # (fitting priority), then the largest minimum radius.
+    def front_arm(T, ku, k, ke):
         return chain([SPf, G, Sfc], [rotv(ush_f, 90), dirdeg(T), rotv(efc, -90)], ks=[(1.0, ku), (k, ke)])
     best = None
-    lim = 0.85 * B / 84          # allowed front-width reduction scales with size
-    for T in np.arange(-100.0, -150.1, -2.0):
-        for k in (1.0, 1.15, 1.3, 1.5, 1.75, 2.0):
-            for ku, ke in ((0.8, 1.0), (1.0, 1.0), (1.2, 1.0), (0.8, 0.7), (1.0, 0.7)):
-                c = front_arm(T, k, ku, ke)
-                up, lo = split_at_line(c, G, P(1, 0))
-                loss = up[:, 0].max() - xfw
-                key = (inflections(c) + inflections(up) + inflections(lo) > 0, loss > lim, -min_radius(c))
-                if best is None or key < best[0]:
-                    best = (key, T, k, ku, ke)
+    for T in np.arange(-90.0, -112.1, -2.0):
+        for ku in (0.6, 0.8, 1.0):
+            for k in (0.8, 1.0, 1.3, 1.6):
+                for ke in (0.6, 0.8, 1.0):
+                    c = front_arm(T, ku, k, ke)
+                    up, lo = split_at_line(c, G, P(1, 0))
+                    loss = up[:, 0].max() - xfw
+                    key = (inflections(c) + inflections(up) + inflections(lo) > 0, loss > J['front_width_loss_max'],
+                           -min_radius(c))
+                    if best is None or key < best[0]:
+                        best = (key, T, ku, k, ke)
     arm_fc = front_arm(*best[1:])
-    K.update(front_arm_T=best[1], front_arm_k=best[2:], yoke_arm_k=(ky0, ky1), front_width_lim=lim)
     up_f, lowc_f = split_at_line(arm_fc, G, P(1, 0))
     up_f[-1] = G
     lowc_f[0] = G
-    low_f = rot(lowc_f, BP, dartf)       # starts at G2, ends at Sf
+    Gj, G2j = G, G2
+    K.update(front_arm_T=best[1], front_arm_k=best[2:], yoke_arm_k=(ky0, ky1), Gj=Gj, G2j=G2j)
+    low_f = rot(lowc_f, BP, dartf)       # starts at G2j, ends at Sf
 
     # ---- princess seam
     pr = ProfileSeam(P(BP[0], 0), P(BP[0], -1),
@@ -214,9 +236,9 @@ def build():
     # line (armhole stays smooth).  Side-panel tensions are solved so that BOTH segments match the
     # centre-panel segments exactly (BP notch and waist notch coincide).
     beta, a_bp, ub_k = J['pr_beta'], J['pr_bp_dir'], J['pr_k']
-    pc_u1 = hermite(G, rotv(unit(BP - G), beta), BP, dirdeg(a_bp), 1.0)
+    pc_u1 = hermite(Gj, rotv(unit(BP - Gj), beta), BP, dirdeg(a_bp), 1.0)
     pc_u2 = hermite(BP, dirdeg(a_bp), Wc, tan_start(pc_lo), ub_k, 0.9)
-    s1 = lambda k: hermite(G2, rotv(unit(BP - G2), beta), BP, dirdeg(a_bp), k)
+    s1 = lambda k: hermite(G2j, rotv(unit(BP - G2j), beta), BP, dirdeg(a_bp), k)
     s2 = lambda k: hermite(BP, dirdeg(a_bp), Ws, tan_start(ps_lo), k, 0.9)
     k1 = brentq(lambda k: plen(s1(k)) - plen(pc_u1), 0.2, 1.5, xtol=1e-13)
     k2 = brentq(lambda k: plen(s2(k)) - plen(pc_u2), 0.05, 1.5, xtol=1e-13)
@@ -254,12 +276,13 @@ def build():
     AHf = plen(up_f) + plen(low_f)
     AH = AHb + AHf
     depth = ((SPb[1] - yA) + (SPf[1] - yA)) / 2
-    cap_h = depth * 5 / 6                      # Bunka: 5/6 of average armhole depth
+    cap_h_bunka = depth * 5 / 6                # Bunka: 5/6 of average armhole depth
+    cap_h = cap_h_bunka
     L = M['SL']
     y_el = -(L / 2 + 2.5)                      # elbow line
     T = P(0, 0)
 
-    def sleeve(dl):
+    def sleeve(dl, cap_h=cap_h):
         """dl shortens both Bunka slope lines (front AH, back AH+1) equally."""
         wf = math.sqrt((AHf - dl) ** 2 - cap_h**2)
         wb = math.sqrt((AHb + 1 - dl) ** 2 - cap_h**2)
@@ -281,7 +304,7 @@ def build():
         def gap(o):
             E = edges(o)
             return math.copysign(np.linalg.norm(E['E1'] - E['E2']), E['E1'][1] - E['E2'][1])
-        sh = brentq(lambda o: gap(o) - J['elbow_dart'], -2.8, 6.0, xtol=1e-12)
+        sh = root(lambda o: gap(o) - J['elbow_dart'], -2.8, 6.0, n=12)
         S = edges(sh)
         fedge = np.vstack([S['fe1'], S['fe2'][1:]])
         sf, sb = Bf - T, Bb - T
@@ -302,8 +325,19 @@ def build():
         S.update(Bf=Bf, Bb=Bb, wf=wf, wb=wb, fedge=fedge, cap=cap, cap_pts=pts, dl=dl)
         return S
 
-    dl = brentq(lambda x: plen(sleeve(x)['cap']) - AH - J['cap_ease'], -0.5, 2.5, xtol=1e-12)
-    S = sleeve(dl)
+    # Jacket sleeve: cap height lowered from the Bunka value until the biceps width gives the
+    # target wearing ease over the upper arm; for every height the slopes are re-solved so the
+    # cap ease stays exactly at J['cap_ease'].
+    def solve_dl(h):
+        return root(lambda x: plen(sleeve(x, h)['cap']) - AH - J['cap_ease'], -3.0, 4.0, n=7)
+
+    def biceps(h):
+        s = sleeve(solve_dl(h), h)
+        return s['Bf'][0] - s['Bb'][0]
+    target = M['upper_arm'] + J['biceps_ease']
+    cap_h = root(lambda h: biceps(h) - target, cap_h_bunka * 0.7, cap_h_bunka, n=6, xtol=1e-9)
+    dl = solve_dl(cap_h)
+    S = sleeve(dl, cap_h)
     Bf, Bb, Wf, Wb, E1, E2, Ef = S['Bf'], S['Bb'], S['Wf'], S['Wb'], S['E1'], S['E2'], S['Ef']
     cap, fedge, fe1, fe2 = S['cap'], S['fedge'], S['fe1'], S['fe2']
     mid = (E1 + E2) / 2
@@ -323,7 +357,7 @@ def build():
     sh_notch, _ = point_at_len(cap, AHb * (1 + e / AH))
     yoke_notch, _ = point_at_len(cap, plen(low_b) * (1 + e / AH))
     pr_notch, _ = point_at_len(rev(cap), plen(low_f) * (1 + e / AH))
-    K.update(AHb=AHb, AHf=AHf, AH=AH, cap_h=cap_h, depth=depth, wf=S['wf'], wb=S['wb'], dl=dl, off=S['off'], elbow_sh=S['sh'],
+    K.update(AHb=AHb, AHf=AHf, AH=AH, cap_h=cap_h, cap_h_bunka=cap_h_bunka, depth=depth, wf=S['wf'], wb=S['wb'], dl=dl, off=S['off'], elbow_sh=S['sh'],
              cap_len=capL, ease=e, Bf=Bf, Bb=Bb, Wf=Wf, Wb=Wb, E1=E1, E2=E2, apex=apex, Ef=Ef, y_el=y_el,
              sh_notch=sh_notch, sh_offset=float(sh_notch[0]), cap_pts=S['cap_pts'])
     notches.update(sleeve_sh=(sh_notch,), sleeve_yoke=(yoke_notch,), sleeve_pr=(pr_notch,), sleeve_elbow=(Ef,))

@@ -157,12 +157,12 @@ def verify(R=None):
         return 1 / kk.max()
     rb = min(minrad(rot(C['arm_y'], K['D'], -K['thd'])), minrad(C['low_b']))
     rf = minrad(C['arm_fc'])
-    rep.cond('앞 진동(다트 닫은 착용상태) 최소 곡률반경 ≥ 2.5cm', rf >= 2.5, f'{rf:.2f}cm')
+    rep.cond('앞 진동(다트 닫은 평면) 각진 꺾임 없음: 최소 곡률반경 ≥ 1.5cm', rf >= 1.5, f'{rf:.2f}cm (G점 부근, 가슴다트가 입체로 접히는 자리)')
     rep.cond('뒤 진동 최소 곡률반경 ≥ 2.5cm', rb >= 2.5, f'{rb:.2f}cm')
     rep.add('앞 진동(다트 닫은 상태) 변곡점 수', inflections(C['arm_fc']), 0, 0)
     rep.info(f"앞진동 자동선택: G점 접선 {K['front_arm_T']:.0f}°, 장력 {K['front_arm_k']}", 0)
     fwl = C['up_f'][:, 0].max() - K['xfw']
-    rep.cond(f"앞품 감소 ≤ {K['front_width_lim']:.2f}cm (진동이 앞품선 안쪽으로 들어간 양)", fwl <= K['front_width_lim'] + 1e-9,
+    rep.cond(f"앞품 유지: 원형 앞품선 안쪽으로 {J['front_width_loss_max']}cm 이하", fwl <= J['front_width_loss_max'] + 1e-9,
              f'{fwl:.2f}cm')
     rep.info('뒤 진동둘레 AH(b)', K['AHb'], 'cm')
     rep.info('앞 진동둘레 AH(f)', K['AHf'], 'cm')
@@ -230,7 +230,9 @@ def verify(R=None):
     # ---------------------------------------------------------------- R7
     rep.round('7차 검토 - 소매산 (이즈 · 각 · 곡)')
     rep.add('소매산 곡선 - 진동둘레 = 목표 이즈', K['cap_len'] - K['AH'], J['cap_ease'], 0.005, 'cm')
-    rep.add('소매산 높이 = 평균 진동깊이 × 5/6', K['cap_h'], K['depth'] * 5 / 6, 1e-9, 'cm')
+    rep.add('소매통 = 위팔둘레 + 자켓여유', K['Bf'][0] - K['Bb'][0], M['upper_arm'] + J['biceps_ease'], 0.005, 'cm')
+    rep.info('소매산 높이 (문화식 5/6 값에서 소매통 맞춰 조정)', K['cap_h'], 'cm')
+    rep.info('문화식 소매산 높이 (평균 진동깊이 × 5/6)', K['cap_h_bunka'], 'cm')
     cap = C['cap']
     iT = int(np.argmin(np.linalg.norm(cap, axis=1)))
     tT = unit(cap[iT + 1] - cap[iT - 1])
