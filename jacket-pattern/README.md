@@ -7,6 +7,9 @@
 | 파일 | 내용 |
 |---|---|
 | `01_원형_bodice_sleeve_block.png/pdf` | 문화식 신원형: 길 원형 + 소매 원형, 공식과 값 표기 |
+| `06_원형_실물크기_1to1.pdf` / `06_원형_미리보기.png` | **원형 실물 크기 패턴**: 뒤판(어깨다트, 허리다트 e·d, 뒤중심 f), 앞판(가슴다트, 허리다트 b·a), 소매원형. 시접 없음 |
+| `07_원형_A4분할인쇄.pdf` | 원형 A4 17장 분할본 |
+| `block_report.md` | 원형 검증 64개 항목 |
 | `02_자켓_제도도.png/pdf` | 원형 위에 전개한 자켓 몸판: 요크 / 뒤 3판 / 앞 프린세스 |
 | `03_패턴_실물크기_1to1.pdf` | **실물 크기 패턴 전체** (155 × 161 cm, 플로터 출력용) |
 | `03_패턴_미리보기.png` | 위 파일의 미리보기 |
@@ -24,6 +27,7 @@ python3 verify.py   # 10회 검토 → out/verification_report.md
 python3 render.py   # 도면 / PDF 생성
 python3 audit.py    # 출력물 독립 재검증 → out/audit_report.md
 python3 fitting.py  # 가봉 가정 재검증 → out/fitting_report.md
+python3 block_out.py # 원형 실물크기 + 검증 → out/06·07, block_report.md
 ```
 
 ## 원형 (문화식 신원형)

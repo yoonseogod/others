@@ -231,23 +231,19 @@ def block_figure():
     ax.plot([xbw, xs], [yE, yE], **g)
     ax.plot([xfw - B / 32, xfw - B / 32], [yC - 1, yC + 1], **g)
     k = dict(color='k', lw=1.4)
-    ax.plot([0, 0], [0, BL], **k)
-    ax.plot(*BLK['neck_b'].T, **k)
-    ax.plot([K['SNPb'][0], K['P1'][0]], [K['SNPb'][1], K['P1'][1]], **k)
-    ax.plot([K['P2'][0], K['SPb'][0]], [K['P2'][1], K['SPb'][1]], **k)
-    ax.plot([K['P1'][0], K['D'][0], K['P2'][0]], [K['P1'][1], K['D'][1], K['P2'][1]], color='k', lw=0.9)
-    ax.plot(*BLK['arm_b'].T, **k)
-    ax.plot([xs, xs], [yC, 0], **k)
-    ax.plot([0, CF], [0, 0], **k)
-    ax.plot([CF, CF], [0, K['CFn'][1]], **k)
-    ax.plot(*BLK['neck_f'].T, **k)
-    ax.plot([K['SNPf'][0], K['SPf_blk'][0]], [K['SNPf'][1], K['SPf_blk'][1]], **k)
-    ax.plot(*BLK['up_f'].T, **k)
-    ax.plot(*BLK['low_f'].T, **k)
-    ax.plot([K['G'][0], K['BP'][0], K['G2'][0]], [K['G'][1], K['BP'][1], K['G2'][1]], color='k', lw=0.9)
+    import block as BKM
+    for nm in ('back', 'front'):
+        o = outline(BKM.PIECES[nm])
+        ax.plot(o[:, 0], o[:, 1], **k)
+    for nm, darts in (('뒤', BKM.DATA['back_darts']), ('앞', BKM.DATA['front_darts'])):
+        for (cx, w, ap), lab in zip(darts, ('e', 'd') if nm == '뒤' else ('b', 'a')):
+            t_ = f'{lab} {w:.2f}'
+            ax.text(cx, -1.0, t_, fontsize=7, ha='center', va='top', color='0.2')
+    ax.text(BKM.DATA['CBw'][0], -1.0, f"f {BKM.DATA['amt']['f']:.2f}", fontsize=7, ha='left', va='top', color='0.2')
+    ax.text(xs, -1.0, f"c {BKM.DATA['amt']['c']:.2f}", fontsize=7, ha='center', va='top', color='0.2')
     ax.plot(*K['BP'], 'o', ms=5, mfc='white', color='k')
     t = lambda x, y, s, **kw: ax.text(x, y, s, fontsize=8, **kw)
-    t(CF / 2, -1.5, f'B/2 + 6 = {B / 2 + 6:.2f}', ha='center', va='top')
+    t(CF / 2, -3.0, f'B/2 + 6 = {B / 2 + 6:.2f}   허리다트 (문화식 배분)', ha='center', va='top')
     t(-0.8, (BL + yC) / 2, f'B/12+13.7\n= {B / 12 + 13.7:.2f}', ha='right', va='center')
     t(-0.8, yC / 2, f'등길이 {BL:.0f}', ha='right', va='center')
     t(xbw / 2, yC + 0.4, f'등품 B/8+7.4 = {xbw:.2f}', ha='center')
@@ -266,17 +262,15 @@ def block_figure():
     t(CF - 6, K['CFn'][1] - 1.5, f"앞목 ◎-0.2 × ◎+0.5", ha='center')
     ax.text(0, K['yFtop'] + 9, '문화식 신원형 — 길 원형 & 소매 원형', fontsize=17, weight='bold')
     ax.text(0, K['yFtop'] + 6.2, f"B{B:.0f} / W{M['W']:.0f} / 등길이 {BL:.0f} / 소매길이 {M['SL']:.0f} cm   "
-            f"뒤AH {BLK['AHb']:.2f} + 앞AH {BLK['AHf']:.2f} = AH {BLK['AHb'] + BLK['AHf']:.2f} cm",
+            f"뒤AH {BKM.DATA['AHb']:.2f} + 앞AH {BKM.DATA['AHf']:.2f} = AH {BKM.DATA['AHb'] + BKM.DATA['AHf']:.2f} cm",
             fontsize=10)
     # sleeve block
     ox, oy = CF + 34, K['yFtop'] - 1
     sb = lambda a: (a[:, 0] + ox, a[:, 1] + oy)
-    ax.plot(*sb(BLK['capb']), **k)
-    ax.plot(*sb(BLK['capf']), **k)
+    so = outline(BKM.PIECES['sleeve'])
+    ax.plot(so[:, 0] + ox, so[:, 1] + oy, **k)
+    BLK = BKM.DATA
     Bf, Bb, L = BLK['Bf'], BLK['Bb'], BLK['SL']
-    ax.plot([Bb[0] + ox, Bb[0] + ox], [Bb[1] + oy, -L + oy], **k)
-    ax.plot([Bf[0] + ox, Bf[0] + ox], [Bf[1] + oy, -L + oy], **k)
-    ax.plot([Bb[0] + ox, Bf[0] + ox], [-L + oy, -L + oy], **k)
     ax.plot([ox, ox], [oy, -L + oy], **g)
     ax.plot([Bb[0] + ox, Bf[0] + ox], [Bb[1] + oy] * 2, **g)
     ax.plot([Bb[0] + ox, Bf[0] + ox], [BLK['y_el'] + oy] * 2, **g)
