@@ -110,6 +110,10 @@ def walk(segs, d):
             return pc, np.array(q.coords[0])
         d -= l
 
+def cr_cut(pts, y):
+    """곡선의 시작점부터 높이 y 까지"""
+    l = LineString(pts); return np.asarray(substring(l, 0, l.project(l.intersection(LineString([(-999, y), (999, y)])))).coords)
+
 def unit(v):
     v = np.asarray(v, float); return v/np.linalg.norm(v)
 
@@ -242,7 +246,9 @@ def draft(M):
     ph = (pwc+pws)/2
     flare_p, flare_s = 6.5, 8.0
     pr_bc = cr([Pb, (15.0, 25), (pwc, WLb), (ph, HLb), (ph+flare_p, HEMb)])
-    pr_bs = cr([Pb, (16.0, 25), (pws, WLb), (ph, HLb), (ph-flare_p, HEMb)])
+    mk_bs = lambda dx: cr([Pb, (16.0, 25), (pws, WLb), (ph, HLb), (ph-flare_p, HEMb)])
+    info['bs_dx'] = 0.0
+    pr_bs = mk_bs(info['bs_dx'])
     side_b = cr([SCb, (side_w, WLb), (side_h, HLb), (side_h+flare_s, HEMb)])
     cb = cr([CBn, (0, 20), (cb_w, WLb), (cb_h, HLb), (cb_hem, HEMb)])
     # 벤트: y=80 에서 시작, 폭 5
@@ -260,12 +266,16 @@ def draft(M):
     back_c.add_notch_y(WLb, [3, 7]); back_c.add_notch_y(HLb, [3, 7])
     back_c.extra['marks'] = [('벤트 트임 시작', vtx + P(1.0, 0)),
                              ('벤트: 왼쪽 뒤판(입은 기준) 연장분 = 안으로 접는 겉자락', v1 + P(0.6, 6)),
-                             ('         오른쪽 뒤판 연장분 = 밑자락 (접지 않음)', v1 + P(0.6, 7))]
+                             ('         오른쪽 뒤판 연장분 = 밑자락 (접지 않음)', v1 + P(0.6, 7)),
+                             ('견갑골 이즈 %.1fcm: 진동~허리 노치 사이 오그림' % (L(cr_cut(pr_bc, WLb)) - L(cr_cut(pr_bs, WLb))), P(5.0, 30.0))]
 
     back_s = Piece('2', '뒤판 옆', '겉감 2장 (좌우 대칭)', [
         (ah_b2, SA), (side_b, SA), (hem_curve(side_b, side_b[-1], pr_bs[-1], rev(pr_bs)), HEM_SA, 'hem'), (rev(pr_bs), SA)],
         wl=WLb, hl=HLb)
     back_s.add_notch_y(WLb, [1, 3]); back_s.add_notch_y(HLb, [1, 3])
+    _hl = LineString([(-99, WLb), (99, WLb)])
+    back_s.extra['symbols'] = [(np.array(LineString(side_b).intersection(_hl).coords[0]) + P(-0.3, 0), 'loop'),
+                               (np.array(LineString(pr_bs).intersection(_hl).coords[0]) + P(0.3, 0), 'loop')]
 
     # ---------------- 앞판
     HNPf = P(nw, 0)
@@ -322,11 +332,21 @@ def draft(M):
     front_c.extra['roll'] = (B, R)
     front_c.extra['cf'] = True
     front_c.extra['marks'] = [('BP', BP)]
+    btn_y = np.linspace(B[1]+3.0, WLf-3.5, 4)
+    hook_y = np.arange(B[1]+2.0, tab_y-1.0, 7.5)
+    front_c.extra['symbols'] = ([(P(0, y_), 'button') for y_ in btn_y] +
+                                [(P(-ext+0.6, y_), 'hook') for y_ in hook_y] +
+                                [(P(ext-0.6, y_), 'eye') for y_ in hook_y])
+    front_c.extra['symbol_note'] = (P(-ext+1.6, hook_y[5]+2.2), ['● 장식 단추: 오른쪽 앞판만',
+                                     '× 훅: 양쪽 앞끝 안쪽',
+                                     '○ 고리: 양쪽 앞판',
+                                     '→ 훅을 반대쪽 ○에 걸기'])
 
     front_s = Piece('4', '앞판 옆', '겉감 2장 (좌우 대칭)', [
         (ah_f2, SA), (side_f, SA), (hem_curve(side_f, side_f[-1], pr_fs[-1], rev(pr_fs)), HEM_SA, 'hem'), (rev(pr_fs), SA)],
         wl=WLf, hl=HLf)
     front_s.add_notch_y(WLf, [1, 3]); front_s.add_notch_y(HLf, [1, 3])
+    front_s.extra['symbols'] = [(np.array(LineString(side_f).intersection(LineString([(-99, WLf), (99, WLf)])).coords[0]) + P(-0.3, 0), 'loop')]
     pk_y = WLf + 5.5                       # 벨트(완성폭 4.5) 아래 약 3cm
     hl_ = LineString([(-99, pk_y), (99, pk_y)])
     flap_w, on_c = 14.0, 4.0
@@ -410,13 +430,13 @@ def draft(M):
     info['cap_kinks'] = cap_kinks(h, kk, mm)
     info['cap_h'] = h; info['cap_len'] = L(top_cap)+L(und_cap)
     top_sl = Piece('7', '큰 소매 (윗소매)', '겉감 2장 (좌우 대칭)', [
-        (top_cap, SA), (top_b, SA), (hem_curve(top_b, top_b[-1], top_f[-1], rev(top_f)), 3.0, 'hem'), (rev(top_f), SA)])
+        (top_cap, SA), (top_b, SA), (hem_curve(top_b, top_b[-1], top_f[-1], rev(top_f)), SA, 'hem'), (rev(top_f), SA)])
     top_sl.add_notch_y(34, [3])                          # 앞솔기 팔꿈치
     top_sl.add_notch_y(29, [1])                          # 뒷솔기: 이즈 시작
     top_sl.add_notch(np.array(LineString(top_b).interpolate(L(top_b)-10).coords[0]))   # 이즈 끝 (소매단에서 10cm)
     top_sl.extra['marks'] = [('뒷솔기 노치 사이 이즈 %.1fcm (팔꿈치)' % ELB_EASE, P(-6.0, 40))]
     und_sl = Piece('8', '작은 소매 (밑소매)', '겉감 2장 (좌우 대칭)', [
-        (rev(und_cap), SA), (und_f, SA), (hem_curve(und_f, und_f[-1], und_b[-1], rev(und_b)), 3.0, 'hem'), (rev(und_b), SA)])
+        (rev(und_cap), SA), (und_f, SA), (hem_curve(und_f, und_f[-1], und_b[-1], rev(und_b)), SA, 'hem'), (rev(und_b), SA)])
     und_sl.add_notch_y(34, [1])
     und_sl.add_notch_y(29, [3])
     und_sl.add_notch(np.array(LineString(und_b).interpolate(L(und_b)-10).coords[0]))
@@ -491,7 +511,9 @@ def draft(M):
 
     # ---------------- 커프스
     sh_hem = L(top_sl.edges[2][0]) + L(und_sl.edges[2][0])
-    cw_b = sh_hem; cw_t = cw_b + 4.0; chh = 12.0
+    _y12 = LineString([(-99, M['sleeve_len']-12), (99, M['sleeve_len']-12)])
+    sleeve_circ_12 = top_sl.poly.intersection(_y12).length + und_sl.poly.intersection(_y12).length
+    cw_b = sh_hem; cw_t = cw_b + 8.0; chh = 12.0
     R_b = chh*cw_b/(cw_t-cw_b); R_t = R_b + chh; phi = cw_b/R_b
     ctr = P(R_t*math.sin(phi/2), chh + R_b)           # 부채꼴 중심 (아래쪽)
     def arc(R, a0, a1, n=60):
@@ -509,6 +531,47 @@ def draft(M):
         (seg(P(fw+0.3, fh), P(-0.3, fh)), SA), (seg(P(-0.3, fh), P(0, 0)), SA)])
 
     pieces = [front_c, front_s, back_c, back_s, facing, top_sl, und_sl, back_facing, stand, collar, under, cuff, flap]
+
+    # ---------------- 안감 (밑단은 겉감 완성선에서 재단 → 2.5cm 접어 올려 겉감보다 짧게)
+    def lining_of(pc, code, name):
+        lp = Piece(code, name, '안감 2장 (좌우 대칭)',
+                   [(e[0], 0 if e[2] == 'hem' else e[1], 'seam') for e in pc.edges], wl=pc.wl, hl=pc.hl)
+        lp.notch_pts = [q.copy() for q in pc.notch_pts]
+        return lp
+    # 앞판 중심 안감: 안단 안쪽선 ~ 프린세스선
+    h_full = LineString(front_c.edges[3][0])
+    h_part = np.asarray(substring(h_full, 0, h_full.project(Point(Qh))).coords)
+    L1 = Piece('L1', '앞판 중심 안감', '안감 2장 (좌우 대칭)', [
+        (seg(Fs, SPf), SA), (ah_f1, SA), (pr_fc, SA), (h_part, 0), (rev(inner), SA)], wl=WLf, hl=HLf)
+    L1.add_notch_y(WLf, [2]); L1.add_notch_y(HLf, [2])
+    L1.extra['marks'] = [('안단 안쪽선에 박음', inner[len(inner)//2] + P(0.6, 0))]
+    L2 = lining_of(front_s, 'L2', '앞판 옆 안감')
+    # 뒤판 중심 안감: 목안단 아래부터, 뒤중심 여유 주름 2cm (허리선에서 0으로)
+    PLEAT = 2.0
+    top_y = 10.5
+    cbL = cb[cb[:, 1] >= top_y]
+    cbL = np.vstack([[np.interp(top_y, cb[:, 1], cb[:, 0]), top_y], cbL])
+    def pleat_w(y_):
+        return PLEAT if y_ <= 25 else (PLEAT*(WLb-y_)/(WLb-25) if y_ < WLb else 0.0)
+    cbP = np.array([[x_ - pleat_w(y_), y_] for x_, y_ in cbL])
+    cb_up = rev(cbP)
+    top_e = join(seg(cbP[0], P(0, top_y)), rev(bn_in))
+    hemL = hem_curve(pr_bc, pr_bc[-1], cb_up[0], cb_up)
+    L3 = Piece('L3', '뒤판 중심 안감', '안감 2장 (좌우 대칭)', [
+        (top_e, SA), (seg(Fb, SPb), SA), (ah_b1, SA), (pr_bc, SA), (hemL, 0), (cb_up, SA)], wl=WLb, hl=HLb)
+    L3.add_notch_y(WLb, [3, 5]); L3.add_notch_y(HLb, [3, 5])
+    L3.add_notch(np.array(LineString(cb_up).intersection(LineString([(-99, 25.0), (99, 25.0)])).coords[0]))
+    L3.add_notch(np.array(LineString(cb_up).interpolate(LineString(cb_up).project(Point(vtx))).coords[0]))
+    L3.extra['marks'] = [('뒤중심 주름: 완성선에서 2cm 접어 목·허리에서 고정', P(-PLEAT+0.4, 18)),
+                         ('벤트 트임 시작 (아래는 벤트 둘레에 손으로 감침)', vtx + P(0.4, 0))]
+    L4 = lining_of(back_s, 'L4', '뒤판 옆 안감')
+    L5 = lining_of(top_sl, 'L5', '큰 소매 안감')
+    L6 = lining_of(und_sl, 'L6', '작은 소매 안감')
+    for lp in (L2, L4, L5, L6, L1, L3):
+        lp.extra.pop('symbols', None)
+    L5.extra['marks'] = [('뒷솔기 노치 사이 1cm 오그림', P(-6.0, 40))]
+    lining = [L1, L2, L3, L4, L5, L6]
+    info['lining'] = lining
     # 검증용 길이
     info['checks'] = [
         ('뒤 프린세스 (중심/옆)', L(pr_bc), L(pr_bs)),
@@ -521,6 +584,7 @@ def draft(M):
         ('칼라 목둘레 / 목+고지(반)', L(c_neck), c_len),
         ('스탠드칼라 / 목둘레+앞중심 연장', L(s_neck), bnl+fnl+s_ext),
         ('커프스 아랫선 / 소매 끝 둘레', L(bot), sh_hem),
+        ('커프스 윗선 / 소매 둘레(끝에서 12cm 위)', L(top), sleeve_circ_12),
     ]
     angs = []
     for pc_ in (back_c, back_s, front_c, front_s, facing):
@@ -573,7 +637,7 @@ PW, PH = 21.0, 29.7
 MX, MY = 1.0, 1.0
 TW, TH = PW-2*MX, PH-2*MY      # 19 x 27.7
 
-def render(pieces, info, M, path):
+def render(pieces, info, M, path, kind='shell'):
     pdfmetrics.registerFont(TTFont('K', FONT, subfontIndex=0))
     best = None
     for cols in (6, 7, 8):
@@ -593,14 +657,16 @@ def render(pieces, info, M, path):
     print(f'board {cols}x{rows} tiles, printed pages {n_used}')
 
     cv = canvas.Canvas(path, pagesize=A4)
-    cv.setTitle('Military Long Coat Pattern A4')
+    cv.setTitle('Military Long Coat Pattern A4' + (' - Lining' if kind == 'lining' else ''))
+    ckey = lambda q: (q.code.startswith('L'), int(q.code.lstrip('L')))
+    KTAG = '' if kind == 'shell' else ' (안감)'
     rowname = lambda r: chr(ord('A')+r)
 
     # ---------- 1쪽: 안내
     def T(x, y, s, size=10, font='K', color=(0, 0, 0)):
         cv.setFont(font, size); cv.setFillColorRGB(*color); cv.drawString(x*cm, (PH-y)*cm, s)
-    T(1.5, 2.2, '밀리터리 롱코트 패턴  (A4 타일 · 실물 1:1)', 18)
-    T(1.5, 3.0, f'기준 사이즈: {M["size_name"]}   ·   시접 포함 (기본 {SA:g}cm, 밑단 {HEM_SA:g}cm, 소매단 3cm, 골선 0)', 10)
+    T(1.5, 2.2, '밀리터리 롱코트 ' + ('패턴' if kind == 'shell' else '안감 패턴') + '  (A4 타일 · 실물 1:1)', 18)
+    T(1.5, 3.0, f'기준 사이즈: {M["size_name"]}   ·   시접 포함 (기본 {SA:g}cm, ' + (f'밑단 {HEM_SA:g}cm, 소매단 1cm, 골선 0' if kind == 'shell' else '밑단은 겉감 완성선 = 재단선') + ')', 10)
     y = 4.0
     T(1.5, y, '■ 기준 신체 치수 / 완성 치수', 12); y += 0.7
     f = info['finished']
@@ -616,39 +682,47 @@ def render(pieces, info, M, path):
     T(13.7, 4.6, '테스트 사각형', 9); T(13.7, 5.1, '5 cm × 5 cm', 9)
     T(13.5, 9.6, '인쇄 후 자로 꼭 확인하세요.', 8)
     y += 0.5
-    T(1.5, y, '■ 패턴 조각 (원단 재단 부분만, 부자재·장식 제외)', 12); y += 0.6
-    for pc in sorted(pieces, key=lambda q: int(q.code)):
+    T(1.5, y, '■ 패턴 조각 (원단 재단 부분만, 부자재·장식 제외)' if kind == 'shell' else '■ 안감 조각', 12); y += 0.6
+    for pc in sorted(pieces, key=ckey):
         T(1.8, y, f'{pc.code:>2}. {pc.name}', 9); T(9.0, y, pc.cut, 9); y += 0.45
     y += 0.3
-    T(1.5, y, '■ 직사각형 재단 (패턴 없이 치수로 재단, 시접 포함)', 12); y += 0.6
-    for code, nm, size, cnt, note in info['rects']:
-        T(1.8, y, f'{code}. {nm}', 9); T(9.0, y, f'{size}  ·  {cnt}  ·  {note}', 8); y += 0.45
-    y += 0.3
-    T(1.5, y, '■ 안감', 12); y += 0.6
-    for s in ['1·2·4·7·8번을 그대로 사용, 3번(앞판 중심)은 안단(5번) 안쪽선 + 시접 2cm 까지만 사용.',
-              '1번은 목안단(6번) 아래부터. 안감 밑단은 겉감보다 2~3cm 짧게 자르세요.']:
-        T(1.8, y, s, 8.5); y += 0.45
-    y += 0.3
-    T(1.5, y, '■ 인쇄 · 붙이기', 12); y += 0.6
-    for s in ['① 인쇄 배율 "실제 크기 / 100%" (페이지에 맞춤 해제), A4 세로.',
-              '② 각 페이지의 회색 테두리 선을 기준으로 위·왼쪽 여백을 잘라내고, 페이지 번호(A1, A2 …)대로',
-              '    테두리 선끼리 맞춰 테이프로 붙입니다. 가장자리의 ◆ 표시와 → 이웃 페이지 번호를 참고하세요.',
-              f'③ 전체 배치도는 2쪽. 빈 페이지는 인쇄에서 뺐습니다 (총 {n_used}장).',
-              '④ 실선 = 재단선, 점선 = 완성선(박음선). 노치(짧은 눈금)끼리 맞춰 봉제. WL=허리선, HL=엉덩이선.',
-              '⑤ "골" 표시는 원단을 접은 선에 대고 재단. 결 방향 화살표는 원단 식서 방향과 평행.',
-              '⑥ 소매 달기: 소매산 노치(앞 1개·뒤 2개·어깨·옆선)를 진동 노치에 맞추고 여유분은 어깨 쪽에 배분.',
-              '    소매 뒷솔기는 두 노치 사이에서 큰 소매를 1cm 오그려 박습니다(팔꿈치 여유).',
-              '    포켓 플랩은 장식용: 프린세스선을 박은 뒤 위치선(앞판 중심 4cm + 앞판 옆 10cm)에 얹어 박음.',
-              '⑦ 칼라: 스탠드 칼라를 먼저 목둘레에 시접 고정 → 윗/밑칼라를 겹쳐 목둘레+고지선에 봉제.',
-              '    스탠드 칼라 앞끝은 앞중심에서 맞닿게 훅으로 여밉니다.',
-              '⑧ 이미지 기반 제도라 실제 몸에 맞추려면 광목 가봉(토일)을 먼저 해보길 권장합니다.']:
-        T(1.8, y, s, 8.5); y += 0.45
+    if kind == 'shell':
+        T(1.5, y, '■ 직사각형 재단 (패턴 없이 치수로 재단, 시접 포함)', 12); y += 0.6
+        for code, nm, size, cnt, note in info['rects']:
+            T(1.8, y, f'{code}. {nm}', 9); T(9.0, y, f'{size}  ·  {cnt}  ·  {note}', 8); y += 0.45
+        T(1.8, y, '안감은 별도 PDF (military_coat_lining_A4.pdf, L1~L6)', 9); y += 0.45
+        y += 0.3
+    T(1.5, y, '■ 인쇄 · 붙이기 · 봉제 메모', 12); y += 0.6
+    notes = ['① 인쇄 배율 "실제 크기 / 100%" (페이지에 맞춤 해제), A4 세로. 테두리 선끼리 맞춰 페이지 번호(A1…)대로 붙이기.',
+             f'② 전체 배치도는 2쪽. 빈 페이지는 뺐습니다 (총 {n_used}장). 실선=재단선, 점선=완성선, 짧은 눈금=노치.',
+             '③ "골" 표시는 원단 접힌 선에 대고 재단. 결 방향 화살표는 식서와 평행. WL=허리선, HL=엉덩이선.']
+    if kind == 'shell':
+        notes += ['④ 소매: 소매산 노치(앞1·뒤2·어깨·옆선)를 진동에 맞춤. 뒷솔기 두 노치 사이 큰 소매 1cm 오그림.',
+                  '    뒤 프린세스선은 진동~허리 노치 사이에서 뒤판 중심을 0.6cm 오그림(견갑골 여유).',
+                  '⑤ 커프스: 겉·안 커프스 윗선과 양끝을 박아 뒤집고, 아랫선을 소매 끝에 박은 뒤 위로 접어 올림.',
+                  '⑥ 여밈: 앞중심 ● = 장식 단추(오른쪽 앞판만). 실제 여밈은 × 훅을 반대쪽 앞판 ○ 고리에 거는 숨은 훅.',
+                  '⑦ 칼라: 스탠드 칼라를 먼저 목둘레에 고정 → 윗/밑칼라를 목둘레+고지선에 봉제. 스탠드 앞끝은 훅.',
+                  '⑧ 포켓 플랩은 장식용: 프린세스선을 박은 뒤 위치선(앞판 중심 4 + 앞판 옆 10cm)에 얹어 박음.',
+                  '⑨ 벨트 고리 4개: 옆선 2곳, 뒤 프린세스선 2곳의 허리선 (□ 표시).',
+                  '⑩ 이미지 기반 제도라 실제 몸에 맞추려면 광목 가봉(토일)을 먼저 해보길 권장합니다.']
+    else:
+        notes += ['④ L1은 안단(5번) 안쪽선에, L3 윗선은 뒤 목안단(6번) 아랫선에 박습니다.',
+                  '⑤ L3 뒤중심: 2cm 주름분 포함. 완성선(노치)대로 접어 목·허리에서 고정. 벤트 아래는 벤트 둘레에 감침.',
+                  '⑥ 밑단: 재단선이 겉감 완성선입니다. 2.5cm 접어 올려 겉감 밑단 시접에 1.5cm 여유를 두고 고정.',
+                  '⑦ 소매 안감: 겉소매와 같이 박고(뒷솔기 1cm 오그림), 소매 끝을 소매/커프스 이음선에 감침.']
+    for s_ in notes:
+        T(1.8, y, s_, 8.2); y += 0.45
     y += 0.3
     T(1.5, y, '■ 원단 요척 (추정)', 12); y += 0.6
-    area = sum(Polygon(pc.cut_line).area * int(pc.cut.split('장')[0].split()[-1]) for pc in pieces)
-    need = area/150/0.72 + 30
-    T(1.8, y, f'150cm 폭 겉감 약 {need/100:.1f} m  (원단 벨트 포함 시 +0.2m)  ·  안감 110cm 폭 약 {need*1.3/100:.1f} m', 9); y += 0.45
-    T(1.8, y, '접착심지: 칼라·스탠드·안단·커프스·플랩·라펠 부분 (약 1m)', 9)
+    cnt_ = lambda pc: int(pc.cut.split('장')[0].split()[-1])
+    area = sum(Polygon(pc.cut_line).area * cnt_(pc) for pc in pieces)
+    if kind == 'shell':
+        need = area/150/0.72 + 30
+        T(1.8, y, f'150cm 폭 겉감 약 {need/100:.1f} m  (원단 벨트 포함 시 +0.2m)', 9); y += 0.45
+        T(1.8, y, '접착심지: 칼라·스탠드·안단·커프스·플랩·라펠 부분 (약 1m)', 9)
+    else:
+        need = area/110/0.75 + 30
+        T(1.8, y, f'110cm 폭 안감 약 {need/100:.1f} m', 9)
     cv.showPage()
 
     # ---------- 2쪽: 배치도
@@ -684,7 +758,7 @@ def render(pieces, info, M, path):
                 cv.drawString(x, y, f'{rowname(r)}{c+1}')
     yy = oy + BH*s + 1.0
     cv.setFont('K', 8); cv.setFillColorRGB(0, 0, 0)
-    leg = '  '.join(f'{pc.code}.{pc.name}' for pc in sorted(pieces, key=lambda q: int(q.code)))
+    leg = '  '.join(f'{pc.code}.{pc.name}' for pc in sorted(pieces, key=ckey))
     import textwrap
     for line in textwrap.wrap(leg, 70):
         cv.drawString(1.5*cm, (PH-yy)*cm, line); yy += 0.45
@@ -760,7 +834,7 @@ def render(pieces, info, M, path):
                         cv.setDash([6, 2, 1, 2]); cv.setStrokeColorRGB(0.1, 0.4, 0.1)
                         cv.drawPath(path(a), stroke=1, fill=0)
                         cv.setFillColorRGB(0.1, 0.4, 0.1); cv.setFont('K', 8)
-                        xx, yy = mpt(0.3+o[0], 40+o[1]); cv.drawString(xx, yy, 'CF 앞중심')
+                        xx, yy = mpt(0.3+o[0], 52+o[1]); cv.drawString(xx, yy, 'CF 앞중심')
             if 'roll' in pc.extra:
                 Bp, Rp = pc.extra['roll']
                 ls = pc.poly.intersection(LineString([Bp, Bp + (Rp-Bp)*1.0]))
@@ -790,6 +864,28 @@ def render(pieces, info, M, path):
                 cv.setFillColorRGB(0.3, 0.3, 0.3); cv.setFont('K', 8)
                 xx, yy = mpt(*(a+o+(0.5, -0.4))); cv.drawString(xx, yy, '포켓 플랩 위치 (윗선 · 장식용, 앞판 중심에서 이어짐)')
             cv.setDash()
+            for p_, kind_ in pc.extra.get('symbols', []):
+                x, y = mpt(*(p_+o))
+                cv.setStrokeColorRGB(0.15, 0.15, 0.15); cv.setLineWidth(0.7); cv.setDash()
+                cv.setFillColorRGB(0.15, 0.15, 0.15)
+                if kind_ == 'button':
+                    cv.circle(x, y, 1.0*cm, stroke=1, fill=0)
+                    cv.line(x-0.3*cm, y, x+0.3*cm, y); cv.line(x, y-0.3*cm, x, y+0.3*cm)
+                    cv.setFont('K', 6.5); cv.drawString(x+1.1*cm, y-2, '장식 단추')
+                elif kind_ == 'hook':
+                    cv.line(x-4, y-4, x+4, y+4); cv.line(x-4, y+4, x+4, y-4)
+                    cv.setFont('K', 6.5); cv.drawString(x+5, y-2, '훅')
+                elif kind_ == 'eye':
+                    cv.circle(x, y, 3.5, stroke=1, fill=0)
+                    cv.setFont('K', 6.5); cv.drawString(x+5, y-2, '고리')
+                elif kind_ == 'loop':
+                    cv.rect(x-3, y-0.6*cm, 6, 1.2*cm, stroke=1, fill=0)
+                    cv.setFont('K', 6.5); cv.drawString(x+5, y+0.7*cm, '벨트 고리')
+            if 'symbol_note' in pc.extra:
+                p_, lines_ = pc.extra['symbol_note']
+                cv.setFillColorRGB(0.15, 0.15, 0.15); cv.setFont('K', 7.5)
+                for j_, t_ in enumerate(lines_):
+                    x, y = mpt(*(p_+o+P(0, 0.42*j_))); cv.drawString(x, y, t_)
             for txt, p in pc.extra.get('marks', []):
                 cv.setFillColorRGB(0.2, 0.2, 0.2); cv.setFont('K', 8)
                 x, y = mpt(*(p+o)); cv.circle(x, y, 2, fill=1)
@@ -840,6 +936,11 @@ def render(pieces, info, M, path):
                 if k_ == 'fold': obst.append(LineString(pts_).buffer(0.9))
             if 'pocket' in pc.extra:
                 a_, b_ = pc.extra['pocket']; obst.append(sbox(a_[0], a_[1]-1.0, b_[0], a_[1]+0.8))
+            for p_, kind_ in pc.extra.get('symbols', []):
+                obst.append(Point(p_).buffer(1.3 if kind_ == 'button' else 0.8))
+            if 'symbol_note' in pc.extra:
+                p_, lines_ = pc.extra['symbol_note']
+                obst.append(sbox(p_[0]-0.2, p_[1]-0.5, p_[0]+9, p_[1]+0.42*len(lines_)))
             for yv_ in (pc.wl, pc.hl):
                 if yv_ is not None: obst.append(sbox(minx-1, yv_-0.6, maxx+1, yv_+0.3))
             best_l = None
@@ -892,7 +993,7 @@ def render(pieces, info, M, path):
         if nb(r, c+1):
             cv.saveState(); cv.translate((MX+TW)*cm + 9, PH/2*cm); cv.rotate(90); cv.drawCentredString(0, 0, f'{nb(r, c+1)} ▶'); cv.restoreState()
         cv.setFont('K', 7)
-        cv.drawString(MX*cm, 0.35*cm, f'밀리터리 롱코트 · {M["size_name"]} · 실물 1:1 (100% 인쇄)')
+        cv.drawString(MX*cm, 0.35*cm, f'밀리터리 롱코트{KTAG} · {M["size_name"]} · 실물 1:1 (100% 인쇄)')
         cv.drawRightString((PW-MX)*cm, 0.35*cm, f'{rowname(r)}{c+1}  ·  p.{page_no}')
         # 1cm 눈금 (배율 확인용)
         cv.setStrokeColorRGB(0.3, 0.3, 0.3)
@@ -911,4 +1012,7 @@ if __name__ == '__main__':
     print('finished', {k: round(v, 1) for k, v in info['finished'].items()})
     out = os.path.join(OUT_DIR, 'military_coat_pattern_A4.pdf')
     render(pieces, info, MEAS, out)
+    out2 = os.path.join(OUT_DIR, 'military_coat_lining_A4.pdf')
+    render(info['lining'], info, MEAS, out2, kind='lining')
+    print('saved', out2)
     print('saved', out)
